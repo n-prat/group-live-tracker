@@ -1,0 +1,7 @@
+[dev]
+port = 8080
+open = true
+watch = true
+
+[build]
+output = "dist"

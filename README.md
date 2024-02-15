@@ -9,5 +9,5 @@ Credits: https://chat.openai.com
 
 ## DEV/local test
 
-- run a basic webserver
-  - eg Rust: `cargo install http-server` and `http-server --port 7878`
+- https://github.com/trunk-rs/trunk?tab=readme-ov-file#getting-started
+- `trunk serve`
