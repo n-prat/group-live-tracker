@@ -6,6 +6,7 @@ FAIL: not really possible using WebRTC. It is only meant for P2P, and can not sc
 No database, no history, no storing, etc
 
 Credits: https://chat.openai.com
+Based on https://github.com/codec-abc/Yew-WebRTC-Chat
 
 ## DEV/local test
 
