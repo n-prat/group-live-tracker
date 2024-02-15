@@ -44,8 +44,7 @@
 
             // Setup WebRTC
             peerConnection = new RTCPeerConnection();
-            dataChannel = peerConnection.createDataChannel('location');
-            dataChannel.onmessage = receiveLocation;
+            peerConnection.ondatachannel = handleDataChannel;
             navigator.geolocation.watchPosition(sendLocation);
 
             // Offer/answer handshake
@@ -57,12 +56,19 @@
         }
 
         function sendLocation(position) {
-            const location = {
-                username: username,
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude
-            };
-            dataChannel.send(JSON.stringify(location));
+            if (dataChannel) {
+                const location = {
+                    username: username,
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude
+                };
+                dataChannel.send(JSON.stringify(location));
+            }
+        }
+
+        function handleDataChannel(event) {
+            dataChannel = event.channel;
+            dataChannel.onmessage = receiveLocation;
         }
 
         function receiveLocation(event) {
