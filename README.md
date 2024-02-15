@@ -8,6 +8,13 @@ No database, no history, no storing, etc
 Credits: https://chat.openai.com
 Based on https://github.com/codec-abc/Yew-WebRTC-Chat
 
+## TODO
+
+- https://yew.rs/docs/next/concepts/function-components/communication
+  - When receiving a message that is lat/lon, it should update the map
+- the map SHOULD display all the locations for all users
+- leaflet: ask for user's location
+
 ## DEV/local test
 
 - https://github.com/trunk-rs/trunk?tab=readme-ov-file#getting-started

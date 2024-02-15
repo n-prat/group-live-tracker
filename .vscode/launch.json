@@ -5,6 +5,26 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Debug trunk serve",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/Cargo.toml",
+            "args": [
+                "trunk",
+                "serve"
+            ],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "cargo build",
+            // "stopAtEntry": false,
+            "env": {},
+            // "sourceMapPathOverrides": {
+            //     "wasm-bindgen-futures": "{cwd}/target/wasm32-unknown-unknown/debug",
+            //     "wasm_bindgen": "{cwd}/target/wasm32-unknown-unknown/debug",
+            //     "web_sys": "{cwd}/target/wasm32-unknown-unknown/debug",
+            //     "stdweb": "{cwd}/target/wasm32-unknown-unknown/debug"
+            // }
+        },
+        {
             "type": "lldb",
             "request": "launch",
             "name": "Debug executable 'group-live-tracker'",
@@ -19,9 +39,7 @@
                     "kind": "bin"
                 }
             },
-            "args": [
-                
-            ],
+            "args": [],
             "cwd": "${workspaceFolder}"
         },
         {

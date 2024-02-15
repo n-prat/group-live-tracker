@@ -3,14 +3,15 @@ use std::rc::Rc;
 use std::str;
 
 use base64;
+use js_sys::Reflect;
 use serde::{Deserialize, Serialize};
-
-use web_sys::{console, Element, HtmlInputElement, InputEvent, RtcDataChannelState};
-
 use wasm_bindgen::JsCast;
+use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
-
-use yew::{html, html::NodeRef, Context, Component, Html, KeyboardEvent, TargetCast};
+use web_sys::HtmlElement;
+use web_sys::Window;
+use web_sys::{console, Element, HtmlInputElement, InputEvent, RtcDataChannelState};
+use yew::{html, html::NodeRef, Component, Context, Html, KeyboardEvent, TargetCast};
 
 use crate::chat::web_rtc_manager::{ConnectionState, IceCandidate, NetworkManager, State};
 
@@ -78,7 +79,6 @@ impl<T: NetworkManager + 'static> Component for ChatModel<T> {
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-    // fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::StartAsServer => {
                 self.web_rtc_manager

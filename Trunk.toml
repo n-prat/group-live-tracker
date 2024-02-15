@@ -3,5 +3,12 @@ port = 8080
 open = true
 watch = true
 
+[dev.static]
+mime_types = [
+    { extension = "html", mime_type = "text/html" },
+    { extension = "js", mime_type = "application/javascript" },
+    { extension = "css", mime_type = "text/css" },
+]
+
 [build]
 output = "dist"

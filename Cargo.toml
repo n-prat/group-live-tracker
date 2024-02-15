@@ -1,5 +1,5 @@
 [package]
-name = "part2_bis"
+name = "group_live_tracker"
 version = "0.1.0"
 authors = ["codec-abc"]
 edition = "2018"
@@ -19,6 +19,10 @@ base64 = "0.12.1"
 wasm-bindgen-futures = "0.4.13"
 hmac-sha256 = "0.1.2"
 hex = "0.4.2"
+log = "0.4.20"
+env_logger = "0.11.2"
+gloo-utils = "0.2.0"
+leaflet = "0.4.0"
 
 [dependencies.web-sys]
 version = "0.3.39"
