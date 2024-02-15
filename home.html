@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Group Live Tracking</title>
+    <!-- Include Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 400px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="room-form">
+        <input type="text" id="username" placeholder="Enter your name">
+        <input type="text" id="room" placeholder="Enter room name">
+        <button onclick="joinRoom()">Join Room</button>
+    </div>
+    <div id="map"></div>
+
+    <!-- Include Leaflet and WebRTC JavaScript libraries -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+    <script>
+        let map;
+        let username;
+        let roomName;
+        let peerConnection;
+        let dataChannel;
+
+        function joinRoom() {
+            username = document.getElementById('username').value;
+            roomName = document.getElementById('room').value;
+
+            // Initialize map
+            map = L.map('map').setView([0, 0], 2);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Setup WebRTC
+            peerConnection = new RTCPeerConnection();
+            dataChannel = peerConnection.createDataChannel('location');
+            dataChannel.onmessage = receiveLocation;
+            navigator.geolocation.watchPosition(sendLocation);
+
+            // Offer/answer handshake
+            peerConnection.createOffer()
+                .then(offer => peerConnection.setLocalDescription(offer))
+                .then(() => {
+                    // Send offer to signaling server (not implemented in this example)
+                });
+        }
+
+        function sendLocation(position) {
+            const location = {
+                username: username,
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+            };
+            dataChannel.send(JSON.stringify(location));
+        }
+
+        function receiveLocation(event) {
+            const location = JSON.parse(event.data);
+            updateMarker(location);
+        }
+
+        function updateMarker(location) {
+            // Check if marker already exists
+            let marker = markers[location.username];
+            if (!marker) {
+                marker = L.marker([location.latitude, location.longitude]).addTo(map);
+                marker.bindPopup(location.username).openPopup();
+                markers[location.username] = marker;
+            } else {
+                marker.setLatLng([location.latitude, location.longitude]);
+            }
+        }
+    </script>
+</body>
+
+</html>
