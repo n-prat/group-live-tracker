@@ -31,52 +31,74 @@
         let roomName;
         let peerConnection;
         let dataChannel;
+        let markers = {}; // Object to store markers
+        let configuration = {
+            iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+        };
 
         function joinRoom() {
+            console.log("Joining room...");
             username = document.getElementById('username').value;
             roomName = document.getElementById('room').value;
 
-            // Initialize map
-            map = L.map('map').setView([0, 0], 2);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(map);
-
             // Setup WebRTC
-            peerConnection = new RTCPeerConnection();
+            peerConnection = new RTCPeerConnection(configuration);
             peerConnection.ondatachannel = handleDataChannel;
-            navigator.geolocation.watchPosition(sendLocation);
+            console.log("WebRTC setup.");
+
+            // Create data channel
+            dataChannel = peerConnection.createDataChannel('location');
+            dataChannel.onmessage = receiveLocation;
+            console.log("Data channel created.");
 
             // Offer/answer handshake
+            peerConnection.onicecandidate = handleICECandidate;
             peerConnection.createOffer()
                 .then(offer => peerConnection.setLocalDescription(offer))
                 .then(() => {
+                    console.log("Offer created and set.");
                     // Send offer to signaling server (not implemented in this example)
                 });
         }
 
+        function handleICECandidate(event) {
+            if (event.candidate) {
+                // Send ICE candidate to signaling server (not implemented in this example)
+            }
+        }
+
         function sendLocation(position) {
-            if (dataChannel) {
+            console.log("Sending location...");
+            if (dataChannel && dataChannel.readyState === "open") {
                 const location = {
                     username: username,
                     latitude: position.coords.latitude,
                     longitude: position.coords.longitude
                 };
                 dataChannel.send(JSON.stringify(location));
+                console.log("Location sent:", location);
+            } else {
+                console.warn("Sending location: Data channel not ready.");
             }
         }
 
+
         function handleDataChannel(event) {
+            console.log("Handling data channel...");
             dataChannel = event.channel;
             dataChannel.onmessage = receiveLocation;
+            console.log("Data channel set up.");
         }
 
         function receiveLocation(event) {
+            console.log("Receiving location...");
             const location = JSON.parse(event.data);
+            console.log("Received location:", location);
             updateMarker(location);
         }
 
         function updateMarker(location) {
+            console.log("Updating marker...");
             // Check if marker already exists
             let marker = markers[location.username];
             if (!marker) {
@@ -86,6 +108,7 @@
             } else {
                 marker.setLatLng([location.latitude, location.longitude]);
             }
+            console.log("Marker updated.");
         }
     </script>
 </body>
