@@ -17,6 +17,7 @@ Based on https://github.com/rksm/axum-yew-setup/
 - leaflet: ask for user's location
 - https://github.com/codec-abc/Yew-WebRTC-Chat : make joining automatic; AVOID copy-pasting codes around
 - see https://github.com/nag763/tchatchers for templates/styles/etc
+- see https://github.com/tokio-rs/axum/tree/main/examples/chat
 
 ## DEV/local test
 

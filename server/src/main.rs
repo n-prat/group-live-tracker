@@ -1,6 +1,7 @@
 use axum::body::Body;
-use axum::http::{Request, StatusCode};
+use axum::extract::Request;
 use axum::response::Html;
+use axum::routing::get_service;
 use axum::{response::IntoResponse, routing::get, Router};
 use clap::Parser;
 use std::net::{IpAddr, Ipv6Addr, SocketAddr};
@@ -9,7 +10,13 @@ use std::str::FromStr;
 use tokio::fs;
 use tower::{ServiceBuilder, ServiceExt};
 use tower_http::services::ServeDir;
+use tower_http::services::ServeFile;
+use tower_http::trace::DefaultMakeSpan;
 use tower_http::trace::TraceLayer;
+
+mod ws_handler;
+
+use crate::ws_handler::ws_handler;
 
 // Setup the command line interface with clap.
 #[derive(Parser, Debug)]
@@ -43,43 +50,43 @@ async fn main() {
     // enable console logging
     tracing_subscriber::fmt::init();
 
+    // https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/static-file-server/src/main.rs#L44
+    // `ServeDir` allows setting a fallback if an asset is not found
+    // so with this `GET /assets/doesnt-exist.jpg` will return `index.html`
+    // rather than a 404
+    // https://github.com/tokio-rs/axum/blob/9ebd105d0410dcb8a4133374c32415b5a6950371/examples/websockets/src/main.rs#L54
+    let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
+    let static_files_service = ServeDir::new(assets_dir).append_index_html_on_directories(true);
+
     let app = Router::new()
         .route("/api/hello", get(hello))
-        .fallback_service(get(|req: Request<Body>| async move {
-            let res = ServeDir::new(&opt.static_dir).oneshot(req).await.unwrap(); // serve dir is infallible
-            let status = res.status();
-            match status {
-                // If we don't find a file corresponding to the path we serve index.html.
-                // If you want to serve a 404 status code instead you can add a route check as shown in
-                // https://github.com/rksm/axum-yew-setup/commit/a48abfc8a2947b226cc47cbb3001c8a68a0bb25e
-                StatusCode::NOT_FOUND => {
-                    let index_path = PathBuf::from(&opt.static_dir).join("index.html");
-                    fs::read_to_string(index_path)
-                        .await
-                        .map(|index_content| (StatusCode::OK, Html(index_content)).into_response())
-                        .unwrap_or_else(|_| {
-                            (StatusCode::INTERNAL_SERVER_ERROR, "index.html not found")
-                                .into_response()
-                        })
-                }
+        .route("/ws", get(ws_handler))
+        .fallback_service(static_files_service);
 
-                // path was found as a file in the static dir
-                _ => res.into_response(),
-            }
-        }))
-        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
+    // let sock_addr = SocketAddr::from((
+    //     IpAddr::from_str(opt.addr.as_str()).unwrap_or(IpAddr::V6(Ipv6Addr::LOCALHOST)),
+    //     opt.port,
+    // ));
 
-    let sock_addr = SocketAddr::from((
-        IpAddr::from_str(opt.addr.as_str()).unwrap_or(IpAddr::V6(Ipv6Addr::LOCALHOST)),
-        opt.port,
-    ));
+    // tracing::info!("listening on http://{}", sock_addr);
 
-    tracing::info!("listening on http://{}", sock_addr);
+    // axum::Server::bind(&sock_addr)
+    //     .serve(app.into_make_service())
+    //     .await
+    //     .expect("Unable to start server");
 
-    axum::Server::bind(&sock_addr)
-        .serve(app.into_make_service())
+    // https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/websockets/src/main.rs#L66C5-L76C15
+    // run it with hyper
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:8081")
         .await
-        .expect("Unable to start server");
+        .unwrap();
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .unwrap();
 }
 
 async fn hello() -> impl IntoResponse {

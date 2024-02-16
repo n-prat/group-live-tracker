@@ -1,7 +1,13 @@
-use gloo_net::http::Request;
+use gloo::net::http::Request;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 use yew_router::prelude::*;
+
+mod map_component;
+mod websocket_component;
+
+use crate::map_component::MapComponent;
+use crate::websocket_component::WebSocketComponent;
 
 #[derive(Clone, Routable, PartialEq)]
 enum Route {
@@ -23,7 +29,10 @@ fn app() -> Html {
     html! {
         <BrowserRouter>
             <Switch<Route> render={switch} />
+            <MapComponent />
+            <WebSocketComponent />
         </BrowserRouter>
+
     }
 }
 
