@@ -7,6 +7,7 @@ No database, no history, no storing, etc
 
 Credits: https://chat.openai.com
 Based on https://github.com/codec-abc/Yew-WebRTC-Chat
+Based on https://github.com/rksm/axum-yew-setup/
 
 ## TODO
 
@@ -14,6 +15,8 @@ Based on https://github.com/codec-abc/Yew-WebRTC-Chat
   - When receiving a message that is lat/lon, it should update the map
 - the map SHOULD display all the locations for all users
 - leaflet: ask for user's location
+- https://github.com/codec-abc/Yew-WebRTC-Chat : make joining automatic; AVOID copy-pasting codes around
+- see https://github.com/nag763/tchatchers for templates/styles/etc
 
 ## DEV/local test
 
