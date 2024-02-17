@@ -1,13 +1,19 @@
+use std::net::{IpAddr, Ipv6Addr, SocketAddr};
+use std::path::PathBuf;
+use std::str::FromStr;
+use std::{
+    collections::HashSet,
+    sync::{Arc, Mutex},
+};
+
 use axum::body::Body;
 use axum::extract::Request;
 use axum::response::Html;
 use axum::routing::get_service;
 use axum::{response::IntoResponse, routing::get, Router};
 use clap::Parser;
-use std::net::{IpAddr, Ipv6Addr, SocketAddr};
-use std::path::PathBuf;
-use std::str::FromStr;
 use tokio::fs;
+use tokio::sync::broadcast;
 use tower::{ServiceBuilder, ServiceExt};
 use tower_http::services::ServeDir;
 use tower_http::services::ServeFile;
@@ -39,6 +45,15 @@ struct Opt {
     static_dir: String,
 }
 
+// https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/chat/src/main.rs#L26C1-L32C2
+// Our shared state
+struct AppState {
+    // We require unique usernames. This tracks which usernames have been taken.
+    user_set: Mutex<HashSet<String>>,
+    // Channel used to send messages to all connected clients.
+    broadcast_sender: broadcast::Sender<String>,
+}
+
 #[tokio::main]
 async fn main() {
     let opt = Opt::parse();
@@ -58,10 +73,20 @@ async fn main() {
     let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
     let static_files_service = ServeDir::new(assets_dir).append_index_html_on_directories(true);
 
+    // Set up application state for use with with_state().
+    let user_set = Mutex::new(HashSet::new());
+    let (tx, _rx) = broadcast::channel(100);
+
+    let app_state = Arc::new(AppState {
+        user_set,
+        broadcast_sender: tx,
+    });
+
     let app = Router::new()
         .route("/api/hello", get(hello))
         .route("/ws", get(ws_handler))
-        .fallback_service(static_files_service);
+        .fallback_service(static_files_service)
+        .with_state(app_state);
 
     // let sock_addr = SocketAddr::from((
     //     IpAddr::from_str(opt.addr.as_str()).unwrap_or(IpAddr::V6(Ipv6Addr::LOCALHOST)),
