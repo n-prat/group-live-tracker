@@ -29,6 +29,8 @@ impl Component for WebSocketGeoLocComponent {
     fn create(ctx: &Context<Self>) -> Self {
         let protocols = js_sys::Array::new();
         protocols.push(&JsValue::from("geolocation"));
+        // let ws = WebSocket::new("ws://localhost:8081/ws")
+        //     .expect(" WebSocket::new_with_str_sequence failed!");
         let ws = WebSocket::new_with_str_sequence("ws://localhost:8081/ws", &protocols)
             .expect(" WebSocket::new_with_str_sequence failed!");
 
@@ -90,7 +92,7 @@ impl Component for WebSocketGeoLocComponent {
                 if self.ws_is_ready {
                     self.ws
                         .clone()
-                        .send_with_str("Hello from Yew update")
+                        .send_with_str("TODO WebSocketGeoLocComponent Location")
                         .expect("update send_with_str failed");
                 } else {
                     console::log_1(&"WebSocketGeoLocComponent update: websocket not ready".into());

@@ -36,7 +36,7 @@ pub(crate) async fn ws_handler(
     } else {
         String::from("Unknown browser")
     };
-    println!("`{user_agent}` at {addr} connected.");
+    tracing::debug!("ws_handler: `{user_agent}` at {addr} connected.");
     // finalize the upgrade process by returning upgrade callback.
     // we can customize the callback by sending additional info such as address.
     ws.protocols(["chat", "geolocation"])
@@ -46,9 +46,26 @@ pub(crate) async fn ws_handler(
         .on_upgrade(move |socket| handle_socket(socket, addr, state))
 }
 
+async fn handle_socket(socket: WebSocket, addr: SocketAddr, state: Arc<AppState>) {
+    tracing::debug!("handle_socket: protocol: {:?}", socket.protocol());
+
+    let protocol = socket.protocol().and_then(|value| value.to_str().ok());
+
+    if let Some("chat") = protocol {
+        tracing::info!("handle_socket: chat");
+        handle_socket_chat(socket, addr, state).await;
+    } else if let Some("geolocation") = protocol {
+        tracing::info!("handle_socket: geolocation");
+        handle_socket_geolocation(socket, addr, state).await;
+    } else {
+        tracing::warn!("handle_socket: unsupported protocol: {:?}", protocol);
+        // todo!("handle_socket: unsupported protocol")
+    }
+}
+
 /// `https://github.com/tokio-rs/axum/blob/9ebd105d0410dcb8a4133374c32415b5a6950371/examples/chat/src/main.rs#L72C44-L72C59`
 /// Actual websocket statemachine (one will be spawned per connection)
-async fn handle_socket(socket: WebSocket, _who: SocketAddr, state: Arc<AppState>) {
+async fn handle_socket_chat(socket: WebSocket, _who: SocketAddr, state: Arc<AppState>) {
     tracing::debug!("handle_socket: protocol: {:?}", socket.protocol());
 
     // "By splitting, we can send and receive at the same time."
@@ -56,13 +73,13 @@ async fn handle_socket(socket: WebSocket, _who: SocketAddr, state: Arc<AppState>
 
     // "We subscribe *before* sending the "joined" message, so that we will also
     // display it to our client."
-    let mut rx = state.broadcast_sender.subscribe();
+    let mut rx = state.chat_broadcast_sender.subscribe();
 
     // "Now send the "joined" message to all subscribers."
     let username = get_new_username(&state);
     let msg = format!("{username} joined.");
     tracing::debug!("message: {msg}");
-    let _ = state.broadcast_sender.send(msg);
+    let _ = state.chat_broadcast_sender.send(msg);
 
     // "Spawn the first task that will receive broadcast messages and send text
     // messages over the websocket to our client."
@@ -76,7 +93,7 @@ async fn handle_socket(socket: WebSocket, _who: SocketAddr, state: Arc<AppState>
     });
 
     // "Clone things we want to pass (move) to the receiving task."
-    let broadcast_sender = state.broadcast_sender.clone();
+    let chat_broadcast_sender = state.chat_broadcast_sender.clone();
 
     // "Spawn a task that takes messages from the websocket, prepends the user
     // name, and sends them to all broadcast subscribers."
@@ -84,7 +101,7 @@ async fn handle_socket(socket: WebSocket, _who: SocketAddr, state: Arc<AppState>
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(Message::Text(text))) = receiver.next().await {
             // Add username before message.
-            let _ = broadcast_sender.send(format!("{username_copy}: {text}"));
+            let _ = chat_broadcast_sender.send(format!("{username_copy}: {text}"));
         }
     });
 
@@ -97,117 +114,65 @@ async fn handle_socket(socket: WebSocket, _who: SocketAddr, state: Arc<AppState>
     // "Send "user left" message (similar to "joined" above)."
     let msg = format!("{username} left.");
     tracing::debug!("{msg}");
-    let _ = state.broadcast_sender.send(msg);
+    let _ = state.chat_broadcast_sender.send(msg);
 
     remove_user(&state);
+}
 
-    // //send a ping (unsupported by some browsers) just to kick things off and get a response
-    // if sender.send(Message::Ping(vec![1, 2, 3])).await.is_ok() {
-    //     println!("Pinged {who}...");
-    // } else {
-    //     println!("Could not send ping {who}!");
-    //     // no Error here since the only thing we can do is to close the connection.
-    //     // If we can not send messages, there is no way to salvage the statemachine anyway.
-    //     return;
-    // }
+///
+async fn handle_socket_geolocation(socket: WebSocket, _who: SocketAddr, state: Arc<AppState>) {
+    tracing::debug!(
+        "handle_socket_geolocation: protocol: {:?}",
+        socket.protocol()
+    );
 
-    // // receive single message from a client (we can either receive or send with socket).
-    // // this will likely be the Pong for our Ping or a hello message from client.
-    // // waiting for message from a client will block this task, but will not block other client's
-    // // connections.
-    // if let Some(msg) = socket.recv().await {
-    //     if let Ok(msg) = msg {
-    //         if process_message(msg, who).is_break() {
-    //             return;
-    //         }
-    //     } else {
-    //         println!("client {who} abruptly disconnected");
-    //         return;
-    //     }
-    // }
+    // "By splitting, we can send and receive at the same time."
+    let (mut sender, mut receiver) = socket.split();
 
-    // Since each client gets individual statemachine, we can pause handling
-    // when necessary to wait for some external event (in this case illustrated by sleeping).
-    // Waiting for this client to finish getting its greetings does not prevent other clients from
-    // connecting to server and receiving their greetings.
-    // for i in 1..5 {
-    //     if socket
-    //         .send(Message::Text(format!("Hi {i} times!")))
-    //         .await
-    //         .is_err()
-    //     {
-    //         println!("client {who} abruptly disconnected");
-    //         return;
-    //     }
-    //     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-    // }
+    // "We subscribe *before* sending the "joined" message, so that we will also
+    // display it to our client."
+    let mut rx = state.location_broadcast_sender.subscribe();
 
-    // By splitting socket we can send and receive at the same time. In this example we will send
-    // unsolicited messages to client based on some sort of server's internal event (i.e .timer).
-    // let (mut sender, mut receiver) = socket.split();
+    // "Now send the "joined" message to all subscribers."
+    let username = "TODO username handle_socket_geolocation";
 
-    // Spawn a task that will push several messages to the client (does not matter what client does)
-    // let mut send_task = tokio::spawn(async move {
-    //     let n_msg = 20;
-    //     for i in 0..n_msg {
-    //         // In case of any websocket error, we exit.
-    //         if sender
-    //             .send(Message::Text(format!("Server message {i} ...")))
-    //             .await
-    //             .is_err()
-    //         {
-    //             return i;
-    //         }
+    // "Spawn the first task that will receive broadcast messages and send text
+    // messages over the websocket to our client."
+    let mut send_task = tokio::spawn(async move {
+        while let Ok(msg) = rx.recv().await {
+            // In any websocket error, break loop.
+            if sender.send(Message::Text(msg)).await.is_err() {
+                break;
+            }
+        }
+    });
 
-    //         tokio::time::sleep(std::time::Duration::from_millis(300)).await;
-    //     }
+    // "Clone things we want to pass (move) to the receiving task."
+    let location_broadcast_sender = state.location_broadcast_sender.clone();
 
-    //     println!("Sending close to {who}...");
-    //     if let Err(e) = sender
-    //         .send(Message::Close(Some(CloseFrame {
-    //             code: axum::extract::ws::close_code::NORMAL,
-    //             reason: Cow::from("Goodbye"),
-    //         })))
-    //         .await
-    //     {
-    //         println!("Could not send Close due to {e}, probably it is ok?");
-    //     }
-    //     n_msg
-    // });
+    // "Spawn a task that takes messages from the websocket, prepends the user
+    // name, and sends them to all broadcast subscribers."
+    let username_copy = username;
+    let mut recv_task = tokio::spawn(async move {
+        while let Some(Ok(Message::Text(text))) = receiver.next().await {
+            tracing::debug!(
+                "handle_socket_geolocation: recv_task: broadcasting received message to everyone: {text}"
+            );
+            // Add username before message.
+            let _ = location_broadcast_sender.send(format!("{username_copy}: {text}"));
+        }
+    });
 
-    // // This second task will receive messages from client and print them on server console
-    // let mut recv_task = tokio::spawn(async move {
-    //     let mut cnt = 0;
-    //     while let Some(Ok(msg)) = receiver.next().await {
-    //         cnt += 1;
-    //         // print message and break if instructed to do so
-    //         if process_message(msg, who).is_break() {
-    //             break;
-    //         }
-    //     }
-    //     cnt
-    // });
+    // "If any one of the tasks run to completion, we abort the other."
+    tokio::select! {
+        _ = (&mut send_task) => recv_task.abort(),
+        _ = (&mut recv_task) => send_task.abort(),
+    };
 
-    // // If any one of the tasks exit, abort the other.
-    // tokio::select! {
-    //     rv_a = (&mut send_task) => {
-    //         match rv_a {
-    //             Ok(a) => println!("{a} messages sent to {who}"),
-    //             Err(a) => println!("Error sending messages {a:?}")
-    //         }
-    //         recv_task.abort();
-    //     },
-    //     rv_b = (&mut recv_task) => {
-    //         match rv_b {
-    //             Ok(b) => println!("Received {b} messages"),
-    //             Err(b) => println!("Error receiving messages {b:?}")
-    //         }
-    //         send_task.abort();
-    //     }
-    // }
-
-    // // returning from the handler closes the websocket connection
-    // println!("Websocket context {who} destroyed");
+    // "Send "user left" message (similar to "joined" above)."
+    let msg = format!("{username} left.");
+    tracing::debug!("{msg}");
+    let _ = state.location_broadcast_sender.send(msg);
 }
 
 /// Use a AppState to get a new unique username

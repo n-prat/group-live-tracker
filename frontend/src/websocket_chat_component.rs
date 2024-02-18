@@ -30,6 +30,8 @@ impl Component for WebSocketChatComponent {
     fn create(ctx: &Context<Self>) -> Self {
         let protocols = js_sys::Array::new();
         protocols.push(&JsValue::from("chat"));
+        // let ws = WebSocket::new("ws://localhost:8081/ws")
+        //     .expect(" WebSocket::new_with_str_sequence failed!");
         let ws = WebSocket::new_with_str_sequence("ws://localhost:8081/ws", &protocols)
             .expect(" WebSocket::new_with_str_sequence failed!");
 

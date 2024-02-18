@@ -51,7 +51,9 @@ struct AppState {
     // user_set: Mutex<HashSet<String>>,
     nb_users: Mutex<u16>,
     /// Channel used to send messages to all connected clients.
-    broadcast_sender: broadcast::Sender<String>,
+    chat_broadcast_sender: broadcast::Sender<String>,
+    /// Channel used to send locations to all connected clients.
+    location_broadcast_sender: broadcast::Sender<String>,
 }
 
 #[tokio::main]
@@ -76,11 +78,13 @@ async fn main() -> Result<(), std::io::Error> {
     // Set up application state for use with with_state().
     // let user_set = Mutex::new(HashSet::new());
     let nb_users = Mutex::new(0);
-    let (tx, _rx) = broadcast::channel(100);
+    let (chat_tx, _rx) = broadcast::channel(100);
+    let (location_tx, _rx) = broadcast::channel(100);
 
     let app_state = Arc::new(AppState {
         nb_users,
-        broadcast_sender: tx,
+        chat_broadcast_sender: chat_tx,
+        location_broadcast_sender: location_tx,
     });
 
     let app = Router::new()
