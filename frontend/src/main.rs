@@ -16,6 +16,7 @@ mod geo_loc_component;
 mod map_component;
 mod websocket_chat_component;
 mod websocket_geoloc_component;
+mod websockets_common;
 
 use crate::geo_loc_component::GeoLocComponent;
 use crate::map_component::MapComponent;

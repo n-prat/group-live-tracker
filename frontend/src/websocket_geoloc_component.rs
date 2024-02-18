@@ -1,10 +1,9 @@
 //! `https://chat.openai.com`
-use std::rc::Rc;
-use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
 use web_sys::console::{self};
 use web_sys::{MessageEvent, WebSocket};
 use yew::prelude::*;
+
+use crate::websockets_common;
 
 // TODO maybe switch to tungstenite cf https://github.com/tokio-rs/axum/blob/main/examples/websockets/src/client.rs
 // b/c the whole "initial delay" sucks...
@@ -20,6 +19,8 @@ pub enum Msg {
     WebSocketMessage(String),
     SendMessage,
     WebSocketReady,
+    WebSocketClosed,
+    WebSocketErrored,
 }
 
 impl Component for WebSocketGeoLocComponent {
@@ -27,49 +28,26 @@ impl Component for WebSocketGeoLocComponent {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        let protocols = js_sys::Array::new();
-        protocols.push(&JsValue::from("geolocation"));
-        // let ws = WebSocket::new("ws://localhost:8081/ws")
-        //     .expect(" WebSocket::new_with_str_sequence failed!");
-        let ws = WebSocket::new_with_str_sequence("ws://localhost:8081/ws", &protocols)
-            .expect(" WebSocket::new_with_str_sequence failed!");
-
         let on_message_callback = ctx.link().callback(|event: MessageEvent| {
             let msg = event.data().as_string().unwrap(); // Handle potential errors here
             Msg::WebSocketMessage(msg)
         });
-
-        let on_message_callback_rc = Rc::new(on_message_callback);
-        let on_message_closure = Closure::wrap(Box::new(move |event: MessageEvent| {
-            let callback = on_message_callback_rc.clone();
-            callback.emit(event);
-            // if let Err(err) = result {
-            //     log::error!("Failed to process WebSocket message event: {:?}", err);
-            // }
-        }) as Box<dyn FnMut(MessageEvent)>);
-
-        ws.clone()
-            .set_onmessage(Some(on_message_closure.as_ref().unchecked_ref()));
-        on_message_closure.forget(); // Ensure closure is not dropped prematurely
-
-        // MUST wait for the cx to be ready ???
-        // ws.send_with_str("hello from rendered")
-        //     .expect("rendered send_with_str failed");
         let on_open_callback = ctx
             .link()
             .callback(|_event: MessageEvent| Msg::WebSocketReady);
-        let on_open_callback_rc = Rc::new(on_open_callback);
-        let on_open_closure: Closure<dyn FnMut(MessageEvent)> =
-            Closure::wrap(Box::new(move |event: MessageEvent| {
-                let callback = on_open_callback_rc.clone();
-                callback.emit(event);
-                // if let Err(err) = result {
-                //     log::error!("Failed to process WebSocket message event: {:?}", err);
-                // }
-            }) as Box<dyn FnMut(MessageEvent)>);
-        ws.clone()
-            .set_onopen(Some(on_open_closure.as_ref().unchecked_ref()));
-        on_open_closure.forget();
+        let on_close_callback = ctx
+            .link()
+            .callback(|_event: MessageEvent| Msg::WebSocketClosed);
+        let on_error_callback = ctx
+            .link()
+            .callback(|_event: MessageEvent| Msg::WebSocketErrored);
+        let ws = websockets_common::new_websocket(
+            "geolocation",
+            on_message_callback,
+            on_open_callback,
+            on_close_callback,
+            on_error_callback,
+        );
 
         console::log_1(&"WebSocketGeoLocComponent create: done!".into());
 
@@ -102,6 +80,15 @@ impl Component for WebSocketGeoLocComponent {
             }
             Msg::WebSocketReady => {
                 self.ws_is_ready = true;
+                false
+            }
+            Msg::WebSocketClosed => {
+                console::log_1(&"WebSocketGeoLocComponent update: WebSocketClosed".into());
+                self.ws_is_ready = false;
+                false
+            }
+            Msg::WebSocketErrored => {
+                console::log_1(&"WebSocketGeoLocComponent update: WebSocketErrored".into());
                 false
             }
         }
