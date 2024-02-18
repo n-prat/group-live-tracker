@@ -10,7 +10,7 @@ use yew::prelude::*;
 // b/c the whole "initial delay" sucks...
 // https://github.com/snapview/tokio-tungstenite/issues/278 related ?
 
-pub struct WebSocketComponent {
+pub struct WebSocketChatComponent {
     // link: ComponentLink<Self>,
     ws: WebSocket,
     messages: Vec<String>,
@@ -23,12 +23,16 @@ pub enum Msg {
     WebSocketReady,
 }
 
-impl Component for WebSocketComponent {
+impl Component for WebSocketChatComponent {
     type Message = Msg;
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        let ws = WebSocket::new("ws://localhost:8081/ws").expect("WebSocket creation failed");
+        let protocols = js_sys::Array::new();
+        protocols.push(&JsValue::from("chat"));
+        let ws = WebSocket::new_with_str_sequence("ws://localhost:8081/ws", &protocols)
+            .expect(" WebSocket::new_with_str_sequence failed!");
+
         let on_message_callback = ctx.link().callback(|event: MessageEvent| {
             let msg = event.data().as_string().unwrap(); // Handle potential errors here
             Msg::WebSocketMessage(msg)

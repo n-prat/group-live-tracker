@@ -39,12 +39,18 @@ pub(crate) async fn ws_handler(
     println!("`{user_agent}` at {addr} connected.");
     // finalize the upgrade process by returning upgrade callback.
     // we can customize the callback by sending additional info such as address.
-    ws.on_upgrade(move |socket| handle_socket(socket, addr, state))
+    ws.protocols(["chat", "geolocation"])
+        .on_failed_upgrade(|error| {
+            tracing::error!("ws_handler on_failed_upgrade: error: {error}");
+        })
+        .on_upgrade(move |socket| handle_socket(socket, addr, state))
 }
 
 /// `https://github.com/tokio-rs/axum/blob/9ebd105d0410dcb8a4133374c32415b5a6950371/examples/chat/src/main.rs#L72C44-L72C59`
 /// Actual websocket statemachine (one will be spawned per connection)
 async fn handle_socket(socket: WebSocket, _who: SocketAddr, state: Arc<AppState>) {
+    tracing::debug!("handle_socket: protocol: {:?}", socket.protocol());
+
     // "By splitting, we can send and receive at the same time."
     let (mut sender, mut receiver) = socket.split();
 
@@ -53,9 +59,9 @@ async fn handle_socket(socket: WebSocket, _who: SocketAddr, state: Arc<AppState>
     let mut rx = state.broadcast_sender.subscribe();
 
     // "Now send the "joined" message to all subscribers."
-    let username = "TODO_username";
+    let username = get_new_username(&state);
     let msg = format!("{username} joined.");
-    tracing::debug!("{msg}");
+    tracing::debug!("message: {msg}");
     let _ = state.broadcast_sender.send(msg);
 
     // "Spawn the first task that will receive broadcast messages and send text
@@ -74,10 +80,11 @@ async fn handle_socket(socket: WebSocket, _who: SocketAddr, state: Arc<AppState>
 
     // "Spawn a task that takes messages from the websocket, prepends the user
     // name, and sends them to all broadcast subscribers."
+    let username_copy = username.clone();
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(Message::Text(text))) = receiver.next().await {
             // Add username before message.
-            let _ = broadcast_sender.send(format!("{username}: {text}"));
+            let _ = broadcast_sender.send(format!("{username_copy}: {text}"));
         }
     });
 
@@ -91,6 +98,8 @@ async fn handle_socket(socket: WebSocket, _who: SocketAddr, state: Arc<AppState>
     let msg = format!("{username} left.");
     tracing::debug!("{msg}");
     let _ = state.broadcast_sender.send(msg);
+
+    remove_user(&state);
 
     // //send a ping (unsupported by some browsers) just to kick things off and get a response
     // if sender.send(Message::Ping(vec![1, 2, 3])).await.is_ok() {
@@ -199,6 +208,24 @@ async fn handle_socket(socket: WebSocket, _who: SocketAddr, state: Arc<AppState>
 
     // // returning from the handler closes the websocket connection
     // println!("Websocket context {who} destroyed");
+}
+
+/// Use a AppState to get a new unique username
+/// ALSO increment `state.nb_users`
+fn get_new_username(state: &AppState) -> String {
+    let mut nb_users = state.nb_users.lock().unwrap();
+
+    let username = format!("user[{}]", nb_users);
+
+    *nb_users += 1;
+
+    username
+}
+
+/// decrement `state.nb_users`
+fn remove_user(state: &AppState) {
+    let mut nb_users = state.nb_users.lock().unwrap();
+    *nb_users -= 1;
 }
 
 // /// helper to print contents of messages to stdout. Has special treatment for Close.

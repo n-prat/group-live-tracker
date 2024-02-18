@@ -12,6 +12,7 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::Mutex;
 
 use axum::{response::IntoResponse, routing::get, Router};
 use clap::Parser;
@@ -48,6 +49,7 @@ struct Opt {
 struct AppState {
     // We require unique usernames. This tracks which usernames have been taken.
     // user_set: Mutex<HashSet<String>>,
+    nb_users: Mutex<u16>,
     /// Channel used to send messages to all connected clients.
     broadcast_sender: broadcast::Sender<String>,
 }
@@ -73,9 +75,11 @@ async fn main() -> Result<(), std::io::Error> {
 
     // Set up application state for use with with_state().
     // let user_set = Mutex::new(HashSet::new());
+    let nb_users = Mutex::new(0);
     let (tx, _rx) = broadcast::channel(100);
 
     let app_state = Arc::new(AppState {
+        nb_users,
         broadcast_sender: tx,
     });
 

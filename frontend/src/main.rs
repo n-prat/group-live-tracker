@@ -14,11 +14,13 @@ use yew_router::prelude::*;
 
 mod geo_loc_component;
 mod map_component;
-mod websocket_component;
+mod websocket_chat_component;
+mod websocket_geoloc_component;
 
 use crate::geo_loc_component::GeoLocComponent;
 use crate::map_component::MapComponent;
-use crate::websocket_component::WebSocketComponent;
+use crate::websocket_chat_component::WebSocketChatComponent;
+use crate::websocket_geoloc_component::WebSocketGeoLocComponent;
 
 #[derive(Clone, Routable, PartialEq)]
 enum Route {
@@ -42,8 +44,9 @@ fn app() -> Html {
         <BrowserRouter>
             <Switch<Route> render={switch} />
             <MapComponent markers={vec![]}/>
-            <WebSocketComponent />
+            <WebSocketChatComponent />
             <GeoLocComponent />
+            <WebSocketGeoLocComponent />
         </BrowserRouter>
 
     }
