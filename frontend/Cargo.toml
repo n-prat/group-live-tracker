@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 console_error_panic_hook = "0.1.7"
 gloo = { version = "0.11.0", features = ["net"] }
+gloo-storage = "0.3.0"
 gloo-utils = "0.2.0"
 js-sys = "0.3.68"
 leaflet = "0.4.0"

@@ -3,7 +3,7 @@ use web_sys::console::{self};
 use web_sys::{MessageEvent, WebSocket};
 use yew::prelude::*;
 
-use crate::websockets_common;
+use crate::websockets_common::{get_username_from_context, new_websocket};
 
 // TODO maybe switch to tungstenite cf https://github.com/tokio-rs/axum/blob/main/examples/websockets/src/client.rs
 // b/c the whole "initial delay" sucks...
@@ -38,7 +38,7 @@ impl WebSocketGeoLocComponent {
         let on_error_callback = ctx
             .link()
             .callback(|_event: MessageEvent| Msg::WebSocketErrored);
-        let ws = websockets_common::new_websocket(
+        let ws = new_websocket(
             "geolocation",
             on_message_callback,
             on_open_callback,
@@ -88,6 +88,22 @@ impl Component for WebSocketGeoLocComponent {
             }
             Msg::WebSocketReady => {
                 self.ws_is_ready = true;
+
+                // this will be used as "username" cf server/src/ws_handler.rs:L77
+                let username = get_username_from_context(ctx);
+                console::log_1(
+                    &format!("WebSocketGeoLocComponent Msg::WebSocketReady username: {username:?}")
+                        .into(),
+                );
+                match username {
+                    Some(username) => self
+                        .ws
+                        .clone()
+                        .send_with_str(&username)
+                        .expect("update send_with_str failed"),
+                    None => {}
+                };
+
                 false
             }
             Msg::WebSocketClosed => {

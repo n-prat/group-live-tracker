@@ -1,10 +1,16 @@
 use std::rc::Rc;
+
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
+use web_sys::console;
 use web_sys::MessageEvent;
 use web_sys::WebSocket;
 use yew::Callback;
+use yew::Component;
+use yew::Context;
+
+use crate::AppCtx;
 
 pub(crate) fn new_websocket(
     protocol: &str,
@@ -71,4 +77,29 @@ pub(crate) fn new_websocket(
     on_error_closure.forget();
 
     ws
+}
+
+pub(crate) fn get_username_from_context<T: Component>(ctx: &Context<T>) -> Option<String> {
+    // let app_ctx: AppCtx = use_context();
+    let (app_ctx, _) = ctx
+        .link()
+        .context::<AppCtx>(Callback::noop())
+        .expect("No AppCtx Provided");
+
+    app_ctx.username.clone()
+}
+
+pub(crate) fn update_username_in_context<T: Component>(ctx: &Context<T>, username: &str) {
+    // let app_ctx: AppCtx = use_context();
+    let (app_ctx, _ctx_handle) = ctx
+        .link()
+        .context::<AppCtx>(Callback::noop())
+        .expect("No AppCtx Provided");
+
+    // app_ctx.dispatch("aaa");
+    // app_ctx.borrow_mut().username = Some(username.to_string());
+    // app_ctx.username = Some("AAAAAAAAA".to_string());
+    app_ctx.dispatch(username.to_string());
+
+    console::log_1(&format!("update_username_in_context: done: {:?}", username).into());
 }

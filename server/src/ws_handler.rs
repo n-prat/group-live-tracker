@@ -71,14 +71,35 @@ async fn handle_socket_chat(socket: WebSocket, _who: SocketAddr, state: Arc<AppS
     // "By splitting, we can send and receive at the same time."
     let (mut sender, mut receiver) = socket.split();
 
+    // Username gets set in the receive loop, if it's valid.
+    let mut username = String::new();
+    // Loop until a text message is found.
+    while let Some(Ok(message)) = receiver.next().await {
+        if let Message::Text(name) = message {
+            // If username that is sent by client is not taken, fill username string.
+            check_username(&state, &mut username, &name, true);
+
+            // If not empty we want to quit the loop else we want to quit function.
+            if !username.is_empty() {
+                break;
+            } else {
+                // Only send our client that username is taken.
+                let _ = sender
+                    .send(Message::Text(String::from("Username already taken.")))
+                    .await;
+
+                return;
+            }
+        }
+    }
+
     // "We subscribe *before* sending the "joined" message, so that we will also
     // display it to our client."
     let mut rx = state.chat_broadcast_sender.subscribe();
 
-    // "Now send the "joined" message to all subscribers."
-    let username = get_new_username(&state);
+    // Now send the "joined" message to all subscribers.
     let msg = format!("{username} joined.");
-    tracing::debug!("message: {msg}");
+    tracing::debug!("{msg}");
     let _ = state.chat_broadcast_sender.send(msg);
 
     // "Spawn the first task that will receive broadcast messages and send text
@@ -116,25 +137,46 @@ async fn handle_socket_chat(socket: WebSocket, _who: SocketAddr, state: Arc<AppS
     tracing::debug!("{msg}");
     let _ = state.chat_broadcast_sender.send(msg);
 
-    remove_user(&state);
+    remove_user(&state, &username, true);
 }
 
 ///
 async fn handle_socket_geolocation(socket: WebSocket, _who: SocketAddr, state: Arc<AppState>) {
-    tracing::debug!(
-        "handle_socket_geolocation: protocol: {:?}",
-        socket.protocol()
-    );
+    tracing::debug!("handle_socket: protocol: {:?}", socket.protocol());
 
     // "By splitting, we can send and receive at the same time."
     let (mut sender, mut receiver) = socket.split();
+
+    // Username gets set in the receive loop, if it's valid.
+    let mut username = String::new();
+    // Loop until a text message is found.
+    while let Some(Ok(message)) = receiver.next().await {
+        if let Message::Text(name) = message {
+            // If username that is sent by client is not taken, fill username string.
+            check_username(&state, &mut username, &name, false);
+
+            // If not empty we want to quit the loop else we want to quit function.
+            if !username.is_empty() {
+                break;
+            } else {
+                // Only send our client that username is taken.
+                let _ = sender
+                    .send(Message::Text(String::from("Username already taken.")))
+                    .await;
+
+                return;
+            }
+        }
+    }
 
     // "We subscribe *before* sending the "joined" message, so that we will also
     // display it to our client."
     let mut rx = state.location_broadcast_sender.subscribe();
 
-    // "Now send the "joined" message to all subscribers."
-    let username = "TODO username handle_socket_geolocation";
+    // Now send the "joined" message to all subscribers.
+    let msg = format!("{username} joined.");
+    tracing::debug!("{msg}");
+    let _ = state.location_broadcast_sender.send(msg);
 
     // "Spawn the first task that will receive broadcast messages and send text
     // messages over the websocket to our client."
@@ -152,12 +194,9 @@ async fn handle_socket_geolocation(socket: WebSocket, _who: SocketAddr, state: A
 
     // "Spawn a task that takes messages from the websocket, prepends the user
     // name, and sends them to all broadcast subscribers."
-    let username_copy = username;
+    let username_copy = username.clone();
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(Message::Text(text))) = receiver.next().await {
-            tracing::debug!(
-                "handle_socket_geolocation: recv_task: broadcasting received message to everyone: {text}"
-            );
             // Add username before message.
             let _ = location_broadcast_sender.send(format!("{username_copy}: {text}"));
         }
@@ -173,24 +212,39 @@ async fn handle_socket_geolocation(socket: WebSocket, _who: SocketAddr, state: A
     let msg = format!("{username} left.");
     tracing::debug!("{msg}");
     let _ = state.location_broadcast_sender.send(msg);
+
+    remove_user(&state, &username, false);
 }
 
 /// Use a AppState to get a new unique username
 /// ALSO increment `state.nb_users`
-fn get_new_username(state: &AppState) -> String {
-    let mut nb_users = state.nb_users.lock().unwrap();
+fn check_username(
+    state: &AppState,
+    result_username: &mut String,
+    username_to_check: &str,
+    is_chat: bool,
+) {
+    let mut users_set = if is_chat {
+        state.chat_users_set.lock().unwrap()
+    } else {
+        state.location_users_set.lock().unwrap()
+    };
 
-    let username = format!("user[{}]", nb_users);
+    if !users_set.contains(username_to_check) {
+        users_set.insert(username_to_check.to_owned());
 
-    *nb_users += 1;
-
-    username
+        result_username.push_str(username_to_check);
+    }
 }
 
 /// decrement `state.nb_users`
-fn remove_user(state: &AppState) {
-    let mut nb_users = state.nb_users.lock().unwrap();
-    *nb_users -= 1;
+fn remove_user(state: &AppState, username: &str, is_chat: bool) {
+    let mut users_set = if is_chat {
+        state.chat_users_set.lock().unwrap()
+    } else {
+        state.location_users_set.lock().unwrap()
+    };
+    users_set.remove(username);
 }
 
 // /// helper to print contents of messages to stdout. Has special treatment for Close.

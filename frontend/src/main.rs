@@ -9,16 +9,20 @@
 // #![warn(clippy::panic)]
 // #![warn(clippy::unwrap_used)]
 
+use std::rc::Rc;
+
 use yew::prelude::*;
 use yew_router::prelude::*;
 
 mod geo_loc_component;
+mod get_username_component;
 mod map_component;
 mod websocket_chat_component;
 mod websocket_geoloc_component;
 mod websockets_common;
 
 use crate::geo_loc_component::GeoLocComponent;
+use crate::get_username_component::UsernameForm;
 use crate::map_component::MapComponent;
 use crate::websocket_chat_component::WebSocketChatComponent;
 use crate::websocket_geoloc_component::WebSocketGeoLocComponent;
@@ -31,25 +35,58 @@ enum Route {
     // HelloServer,
 }
 
-#[allow(clippy::needless_pass_by_value)]
-fn switch(routes: Route) -> Html {
-    match routes {
-        Route::Home => html! { <h1>{ "Hello Frontend" }</h1> },
-        // Route::HelloServer => html! { <HelloServer /> },
+// #[allow(clippy::needless_pass_by_value)]
+// fn switch(routes: Route) -> Html {
+//     match routes {
+//         Route::Home => html! { <h1>{ "Hello Frontend" }</h1> },
+//         // Route::HelloServer => html! { <HelloServer /> },
+//     }
+// }
+
+/// https://github.com/yewstack/yew/blob/d0419a278dc126af4556c9afae2ef6b00b5fef36/examples/contexts/src/msg_ctx.rs#L5
+#[derive(Clone, Debug, PartialEq)]
+pub struct AppCtxInternal {
+    username: Option<String>,
+}
+
+impl Reducible for AppCtxInternal {
+    type Action = String;
+
+    fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
+        AppCtxInternal {
+            username: Some(action),
+        }
+        .into()
     }
 }
 
+pub type AppCtx = UseReducerHandle<AppCtxInternal>;
+
+// #[derive(Properties, PartialEq)]
+// pub struct MyAppProperties {
+//     pub username: Option<String>,
+// }
+
 #[function_component(App)]
 fn app() -> Html {
-    html! {
-        <BrowserRouter>
-            <Switch<Route> render={switch} />
-            <MapComponent markers={vec![]}/>
-            <WebSocketChatComponent />
-            <GeoLocComponent />
-            <WebSocketGeoLocComponent />
-        </BrowserRouter>
+    // TODO? but does not work with "struct Component", only function_component
+    let app_ctx = use_reducer(|| AppCtxInternal { username: None });
 
+    // let pre_made_props = props! {
+    //     MyAppProperties {} // Notice we did not need to specify name prop
+    // };
+
+    html! {
+        <ContextProvider<AppCtx> context={app_ctx}>
+            <BrowserRouter>
+                // <Switch<Route> render={switch} />
+                <MapComponent markers={vec![]}/>
+                <WebSocketChatComponent />
+                <GeoLocComponent />
+                <WebSocketGeoLocComponent />
+                <UsernameForm />
+            </BrowserRouter>
+        </ContextProvider<AppCtx>>
     }
 }
 

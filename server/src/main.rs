@@ -9,6 +9,7 @@
 #![warn(clippy::panic)]
 #![warn(clippy::unwrap_used)]
 
+use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -47,9 +48,10 @@ struct Opt {
 /// `https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/chat/src/main.rs#L26C1-L32C2`
 /// Our shared state
 struct AppState {
-    // We require unique usernames. This tracks which usernames have been taken.
-    // user_set: Mutex<HashSet<String>>,
-    nb_users: Mutex<u16>,
+    /// We require unique usernames. This tracks which usernames have been taken.
+    chat_users_set: Mutex<HashSet<String>>,
+    /// We require unique usernames. This tracks which usernames have been taken.
+    location_users_set: Mutex<HashSet<String>>,
     /// Channel used to send messages to all connected clients.
     chat_broadcast_sender: broadcast::Sender<String>,
     /// Channel used to send locations to all connected clients.
@@ -76,13 +78,14 @@ async fn main() -> Result<(), std::io::Error> {
     let static_files_service = ServeDir::new(assets_dir).append_index_html_on_directories(true);
 
     // Set up application state for use with with_state().
-    // let user_set = Mutex::new(HashSet::new());
-    let nb_users = Mutex::new(0);
+    let chat_users_set = Mutex::new(HashSet::new());
+    let location_users_set = Mutex::new(HashSet::new());
     let (chat_tx, _rx) = broadcast::channel(100);
     let (location_tx, _rx) = broadcast::channel(100);
 
     let app_state = Arc::new(AppState {
-        nb_users,
+        chat_users_set,
+        location_users_set,
         chat_broadcast_sender: chat_tx,
         location_broadcast_sender: location_tx,
     });
