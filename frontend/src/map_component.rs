@@ -1,16 +1,14 @@
-use std::ops::Add;
-
-/// https://github.com/slowtec/leaflet-rs/blob/master/examples/yew-component/src/components/map_component.rs
+/// `https://github.com/slowtec/leaflet-rs/blob/master/examples/yew-component/src/components/map_component.rs`
 use gloo_utils::document;
 use leaflet::{CircleMarker, LatLng, Map, MapOptions, TileLayer};
 use wasm_bindgen::JsCast;
-use web_sys::console::{self, log};
+use web_sys::console::{self};
 use web_sys::{Element, HtmlElement, Node};
+use yew::prelude::*;
 use yew::Properties;
-use yew::{html::ImplicitClone, prelude::*};
 
-const PARIS_LAT: f64 = 48.866667;
-const PARIS_LNG: f64 = 2.333333;
+const PARIS_LAT: f64 = 48.866_667;
+const PARIS_LNG: f64 = 2.333_333;
 
 pub enum Msg {}
 
@@ -46,7 +44,7 @@ impl Component for MapComponent {
     type Properties = MapProperties;
 
     fn create(ctx: &Context<Self>) -> Self {
-        let props = ctx.props();
+        let _props = ctx.props();
 
         let container: Element = document().create_element("div").unwrap();
         let container: HtmlElement = container.dyn_into().unwrap();

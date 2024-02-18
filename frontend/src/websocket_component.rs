@@ -1,9 +1,9 @@
-//! https://chat.openai.com
+//! `https://chat.openai.com`
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::{JsCast, JsValue};
-use web_sys::console::{self, log};
-use web_sys::{Event, MessageEvent, WebSocket};
+use wasm_bindgen::JsCast;
+use web_sys::console::{self};
+use web_sys::{MessageEvent, WebSocket};
 use yew::prelude::*;
 
 // TODO maybe switch to tungstenite cf https://github.com/tokio-rs/axum/blob/main/examples/websockets/src/client.rs
@@ -37,7 +37,7 @@ impl Component for WebSocketComponent {
         let on_message_callback_rc = Rc::new(on_message_callback);
         let on_message_closure = Closure::wrap(Box::new(move |event: MessageEvent| {
             let callback = on_message_callback_rc.clone();
-            let result = callback.emit(event);
+            callback.emit(event);
             // if let Err(err) = result {
             //     log::error!("Failed to process WebSocket message event: {:?}", err);
             // }
@@ -52,12 +52,12 @@ impl Component for WebSocketComponent {
         //     .expect("rendered send_with_str failed");
         let on_open_callback = ctx
             .link()
-            .callback(|event: MessageEvent| Msg::WebSocketReady);
+            .callback(|_event: MessageEvent| Msg::WebSocketReady);
         let on_open_callback_rc = Rc::new(on_open_callback);
         let on_open_closure: Closure<dyn FnMut(MessageEvent)> =
             Closure::wrap(Box::new(move |event: MessageEvent| {
                 let callback = on_open_callback_rc.clone();
-                let result = callback.emit(event);
+                callback.emit(event);
                 // if let Err(err) = result {
                 //     log::error!("Failed to process WebSocket message event: {:?}", err);
                 // }
@@ -114,7 +114,7 @@ impl Component for WebSocketComponent {
         }
     }
 
-    fn rendered(&mut self, ctx: &Context<Self>, first_render: bool) {
+    fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
         // FAIL
         //         panicked at frontend/src/websocket_component.rs:72:14:
         // rendered send_with_str failed: JsValue(InvalidStateError: An attempt was made to use an object that is not, or is no longer, usable

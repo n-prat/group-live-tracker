@@ -28,6 +28,7 @@ Based on https://github.com/rksm/axum-yew-setup/
 
 - `openssl req -x509 -nodes -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365`
   - NOTE: https is needed b/c modern browser DO NOT allow location access in HTTP
--
+- `./dev.sh`
+  - NOTE: both the frontend and backend are started separately so CHECK the logs/terminal for compilation errors!
 
 see also https://github.com/trunk-rs/trunk?tab=readme-ov-file#getting-started

@@ -1,17 +1,8 @@
-use std::ops::Add;
-
-/// https://github.com/slowtec/leaflet-rs/blob/master/examples/yew-component/src/components/map_component.rs
-use gloo_utils::document;
-use leaflet::{CircleMarker, LatLng, Map, MapOptions, TileLayer};
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
-use wasm_bindgen::JsValue;
-use web_sys::console::{self, log};
-use web_sys::js_sys::Reflect;
-use web_sys::{Element, HtmlElement, Node};
-use web_sys::{Geolocation, PositionOptions};
-use yew::Properties;
-use yew::{html::ImplicitClone, prelude::*};
+use web_sys::console::{self};
+use web_sys::PositionOptions;
+use yew::prelude::*;
 
 pub enum Msg {
     RequestLocation,
@@ -23,12 +14,12 @@ impl Component for GeoLocComponent {
     type Message = Msg;
     type Properties = ();
 
-    fn create(ctx: &Context<Self>) -> Self {
+    fn create(_ctx: &Context<Self>) -> Self {
         Self {}
     }
 
-    fn rendered(&mut self, _ctx: &Context<Self>, first_render: bool) {
-        console::log_1(&format!("GeoLocComponent: rendered start").into());
+    fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
+        console::log_1(&"GeoLocComponent: rendered start".into());
         request_geolocation();
     }
 
@@ -36,7 +27,7 @@ impl Component for GeoLocComponent {
         false
     }
 
-    fn changed(&mut self, ctx: &Context<Self>, _old_props: &Self::Properties) -> bool {
+    fn changed(&mut self, _ctx: &Context<Self>, _old_props: &Self::Properties) -> bool {
         true
     }
 
@@ -49,7 +40,7 @@ impl Component for GeoLocComponent {
     }
 }
 
-/// https://chat.openai.com
+/// `https://chat.openai.com`
 fn request_geolocation() {
     // Define options for geolocation request
     // let options = GeolocationOptions::new()
@@ -63,13 +54,13 @@ fn request_geolocation() {
         // Handle the retrieved geolocation position
         let latitude = position.coords().latitude();
         let longitude = position.coords().longitude();
-        console::log_1(&format!("Latitude: {}, Longitude: {}", latitude, longitude).into());
+        console::log_1(&format!("Latitude: {latitude}, Longitude: {longitude}",).into());
     }) as Box<dyn FnMut(web_sys::Position)>);
 
     // Set up a callback function for geolocation retrieval errors
     let error_callback = Closure::wrap(Box::new(|error| {
         // Handle geolocation retrieval errors
-        console::error_1(&format!("Error getting geolocation: {:?}", error).into());
+        console::error_1(&format!("Error getting geolocation: {error:?}",).into());
     }) as Box<dyn FnMut(web_sys::PositionError)>);
 
     // Options for retrieving geolocation position
@@ -103,7 +94,7 @@ fn request_geolocation() {
                 &position_options,
             ) {
                 // Handle error while watching geolocation
-                console::error_1(&format!("Error watching geolocation: {:?}", error).into());
+                console::error_1(&format!("Error watching geolocation: {error:?}",).into());
             }
 
             // Prevent the callbacks from being dropped prematurely
@@ -111,7 +102,7 @@ fn request_geolocation() {
             error_callback.forget();
         }
         Err(err) => {
-            console::error_1(&format!("Failed to cast to Geolocation: {:?}", err).into());
+            console::error_1(&format!("Failed to cast to Geolocation: {err:?}",).into());
         }
     };
 }

@@ -1,24 +1,22 @@
-use std::net::{IpAddr, Ipv6Addr, SocketAddr};
-use std::path::PathBuf;
-use std::str::FromStr;
-use std::{
-    collections::HashSet,
-    sync::{Arc, Mutex},
-};
+// #![cfg_attr(not(feature = "std"), no_std)]
+#![deny(elided_lifetimes_in_paths)]
+#![warn(clippy::suspicious)]
+#![warn(clippy::complexity)]
+#![warn(clippy::perf)]
+#![warn(clippy::style)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::expect_used)]
+#![warn(clippy::panic)]
+#![warn(clippy::unwrap_used)]
 
-use axum::body::Body;
-use axum::extract::Request;
-use axum::response::Html;
-use axum::routing::get_service;
+use std::net::SocketAddr;
+use std::path::PathBuf;
+use std::sync::Arc;
+
 use axum::{response::IntoResponse, routing::get, Router};
 use clap::Parser;
-use tokio::fs;
 use tokio::sync::broadcast;
-use tower::{ServiceBuilder, ServiceExt};
 use tower_http::services::ServeDir;
-use tower_http::services::ServeFile;
-use tower_http::trace::DefaultMakeSpan;
-use tower_http::trace::TraceLayer;
 
 mod ws_handler;
 
@@ -45,22 +43,22 @@ struct Opt {
     static_dir: String,
 }
 
-// https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/chat/src/main.rs#L26C1-L32C2
-// Our shared state
+/// `https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/chat/src/main.rs#L26C1-L32C2`
+/// Our shared state
 struct AppState {
     // We require unique usernames. This tracks which usernames have been taken.
-    user_set: Mutex<HashSet<String>>,
-    // Channel used to send messages to all connected clients.
+    // user_set: Mutex<HashSet<String>>,
+    /// Channel used to send messages to all connected clients.
     broadcast_sender: broadcast::Sender<String>,
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), std::io::Error> {
     let opt = Opt::parse();
 
     // Setup logging & RUST_LOG from args
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", format!("{},hyper=info,mio=info", opt.log_level))
+        std::env::set_var("RUST_LOG", format!("{},hyper=info,mio=info", opt.log_level));
     }
     // enable console logging
     tracing_subscriber::fmt::init();
@@ -74,11 +72,10 @@ async fn main() {
     let static_files_service = ServeDir::new(assets_dir).append_index_html_on_directories(true);
 
     // Set up application state for use with with_state().
-    let user_set = Mutex::new(HashSet::new());
+    // let user_set = Mutex::new(HashSet::new());
     let (tx, _rx) = broadcast::channel(100);
 
     let app_state = Arc::new(AppState {
-        user_set,
         broadcast_sender: tx,
     });
 
@@ -102,16 +99,13 @@ async fn main() {
 
     // https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/websockets/src/main.rs#L66C5-L76C15
     // run it with hyper
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:8081")
-        .await
-        .unwrap();
-    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:8081").await?;
+    tracing::debug!("listening on {}", listener.local_addr()?);
     axum::serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
     )
     .await
-    .unwrap();
 }
 
 async fn hello() -> impl IntoResponse {

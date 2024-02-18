@@ -1,23 +1,18 @@
-//! https://chat.openai.com
-//! and https://github.com/tokio-rs/axum/blob/main/examples/websockets/src/main.rs
-//! and https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/chat/src/main.rs
+//! `https://chat.openai.com`
+//! and `https://github.com/tokio-rs/axum/blob/main/examples/websockets/src/main.rs`
+//! and `https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/chat/src/main.rs`
 
-use std::borrow::Cow;
-use std::ops::ControlFlow;
+use std::net::SocketAddr;
 use std::sync::Arc;
-use std::{net::SocketAddr, path::PathBuf};
 
 use axum::{
     extract::ws::{Message, WebSocket, WebSocketUpgrade},
     response::IntoResponse,
-    routing::get,
-    Router,
 };
 use axum_extra::headers;
 use axum_extra::TypedHeader;
 //allows to extract the IP of connecting user
 use axum::extract::connect_info::ConnectInfo;
-use axum::extract::ws::CloseFrame;
 //allows to split the websocket stream into separate TX and RX branches
 use axum::extract::State;
 use futures::SinkExt;
@@ -47,9 +42,9 @@ pub(crate) async fn ws_handler(
     ws.on_upgrade(move |socket| handle_socket(socket, addr, state))
 }
 
-/// https://github.com/tokio-rs/axum/blob/9ebd105d0410dcb8a4133374c32415b5a6950371/examples/chat/src/main.rs#L72C44-L72C59
+/// `https://github.com/tokio-rs/axum/blob/9ebd105d0410dcb8a4133374c32415b5a6950371/examples/chat/src/main.rs#L72C44-L72C59`
 /// Actual websocket statemachine (one will be spawned per connection)
-async fn handle_socket(mut socket: WebSocket, who: SocketAddr, state: Arc<AppState>) {
+async fn handle_socket(socket: WebSocket, _who: SocketAddr, state: Arc<AppState>) {
     // "By splitting, we can send and receive at the same time."
     let (mut sender, mut receiver) = socket.split();
 
@@ -76,14 +71,13 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, state: Arc<AppSta
 
     // "Clone things we want to pass (move) to the receiving task."
     let broadcast_sender = state.broadcast_sender.clone();
-    let name = username.clone();
 
     // "Spawn a task that takes messages from the websocket, prepends the user
     // name, and sends them to all broadcast subscribers."
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(Message::Text(text))) = receiver.next().await {
             // Add username before message.
-            let _ = broadcast_sender.send(format!("{name}: {text}"));
+            let _ = broadcast_sender.send(format!("{username}: {text}"));
         }
     });
 
@@ -207,36 +201,36 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, state: Arc<AppSta
     // println!("Websocket context {who} destroyed");
 }
 
-/// helper to print contents of messages to stdout. Has special treatment for Close.
-fn process_message(msg: Message, who: SocketAddr) -> ControlFlow<(), ()> {
-    match msg {
-        Message::Text(t) => {
-            println!(">>> {who} sent str: {t:?}");
-        }
-        Message::Binary(d) => {
-            println!(">>> {} sent {} bytes: {:?}", who, d.len(), d);
-        }
-        Message::Close(c) => {
-            if let Some(cf) = c {
-                println!(
-                    ">>> {} sent close with code {} and reason `{}`",
-                    who, cf.code, cf.reason
-                );
-            } else {
-                println!(">>> {who} somehow sent close message without CloseFrame");
-            }
-            return ControlFlow::Break(());
-        }
+// /// helper to print contents of messages to stdout. Has special treatment for Close.
+// fn process_message(msg: Message, who: SocketAddr) -> ControlFlow<(), ()> {
+//     match msg {
+//         Message::Text(t) => {
+//             println!(">>> {who} sent str: {t:?}");
+//         }
+//         Message::Binary(d) => {
+//             println!(">>> {} sent {} bytes: {:?}", who, d.len(), d);
+//         }
+//         Message::Close(c) => {
+//             if let Some(cf) = c {
+//                 println!(
+//                     ">>> {} sent close with code {} and reason `{}`",
+//                     who, cf.code, cf.reason
+//                 );
+//             } else {
+//                 println!(">>> {who} somehow sent close message without CloseFrame");
+//             }
+//             return ControlFlow::Break(());
+//         }
 
-        Message::Pong(v) => {
-            println!(">>> {who} sent pong with {v:?}");
-        }
-        // You should never need to manually handle Message::Ping, as axum's websocket library
-        // will do so for you automagically by replying with Pong and copying the v according to
-        // spec. But if you need the contents of the pings you can see them here.
-        Message::Ping(v) => {
-            println!(">>> {who} sent ping with {v:?}");
-        }
-    }
-    ControlFlow::Continue(())
-}
+//         Message::Pong(v) => {
+//             println!(">>> {who} sent pong with {v:?}");
+//         }
+//         // You should never need to manually handle Message::Ping, as axum's websocket library
+//         // will do so for you automagically by replying with Pong and copying the v according to
+//         // spec. But if you need the contents of the pings you can see them here.
+//         Message::Ping(v) => {
+//             println!(">>> {who} sent ping with {v:?}");
+//         }
+//     }
+//     ControlFlow::Continue(())
+// }
