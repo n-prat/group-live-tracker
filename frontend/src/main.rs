@@ -3,9 +3,11 @@ use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
+mod geo_loc_component;
 mod map_component;
 mod websocket_component;
 
+use crate::geo_loc_component::GeoLocComponent;
 use crate::map_component::MapComponent;
 use crate::websocket_component::WebSocketComponent;
 
@@ -29,8 +31,9 @@ fn app() -> Html {
     html! {
         <BrowserRouter>
             <Switch<Route> render={switch} />
-            <MapComponent />
+            <MapComponent markers={vec![]}/>
             <WebSocketComponent />
+            <GeoLocComponent />
         </BrowserRouter>
 
     }

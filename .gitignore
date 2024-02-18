@@ -1,3 +1,7 @@
 /target/
 /target*/
 /dist/
+/*.pem
+/*.crt
+/*.cert
+/*.key

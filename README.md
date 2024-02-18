@@ -18,8 +18,16 @@ Based on https://github.com/rksm/axum-yew-setup/
 - https://github.com/codec-abc/Yew-WebRTC-Chat : make joining automatic; AVOID copy-pasting codes around
 - see https://github.com/nag763/tchatchers for templates/styles/etc
 - see https://github.com/tokio-rs/axum/tree/main/examples/chat
+- Websocket: MAYBE TRY https://github.com/najamelan/ws_stream_wasm
+- AND/OR https://crates.io/crates/yew-websocket ? (but possibly not compatible with latest yew?)
+- related ???
+  - https://github.com/snapview/tokio-tungstenite/issues/278
+  - https://github.com/tokio-rs/axum/issues/1961
 
 ## DEV/local test
 
-- https://github.com/trunk-rs/trunk?tab=readme-ov-file#getting-started
-- `trunk serve`
+- `openssl req -x509 -nodes -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365`
+  - NOTE: https is needed b/c modern browser DO NOT allow location access in HTTP
+-
+
+see also https://github.com/trunk-rs/trunk?tab=readme-ov-file#getting-started
