@@ -23,11 +23,8 @@ pub enum Msg {
     WebSocketErrored,
 }
 
-impl Component for WebSocketGeoLocComponent {
-    type Message = Msg;
-    type Properties = ();
-
-    fn create(ctx: &Context<Self>) -> Self {
+impl WebSocketGeoLocComponent {
+    fn new_websocket(ctx: &Context<Self>) -> WebSocket {
         let on_message_callback = ctx.link().callback(|event: MessageEvent| {
             let msg = event.data().as_string().unwrap(); // Handle potential errors here
             Msg::WebSocketMessage(msg)
@@ -49,7 +46,18 @@ impl Component for WebSocketGeoLocComponent {
             on_error_callback,
         );
 
-        console::log_1(&"WebSocketGeoLocComponent create: done!".into());
+        ws
+    }
+}
+
+impl Component for WebSocketGeoLocComponent {
+    type Message = Msg;
+    type Properties = ();
+
+    fn create(ctx: &Context<Self>) -> Self {
+        console::log_1(&"WebSocketGeoLocComponent create".into());
+
+        let ws = Self::new_websocket(ctx);
 
         Self {
             // link,
@@ -59,7 +67,7 @@ impl Component for WebSocketGeoLocComponent {
         }
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::WebSocketMessage(message) => {
                 // self.messages.push(message);
@@ -85,6 +93,10 @@ impl Component for WebSocketGeoLocComponent {
             Msg::WebSocketClosed => {
                 console::log_1(&"WebSocketGeoLocComponent update: WebSocketClosed".into());
                 self.ws_is_ready = false;
+                // This will in practice retry until it works; NO NEED for a while/loop etc
+                // if the server is still down it will again reach `WebSocketErrored` then `WebSocketClosed`
+                // which will in turn call `new_websocket`
+                self.ws = Self::new_websocket(ctx);
                 false
             }
             Msg::WebSocketErrored => {
