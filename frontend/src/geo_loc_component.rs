@@ -4,40 +4,12 @@ use web_sys::console::{self};
 use web_sys::PositionOptions;
 use yew::prelude::*;
 
-pub enum Msg {
-    RequestLocation,
-}
+#[function_component]
+pub(crate) fn GeoLocComponent() -> Html {
+    console::log_1(&"GeoLocComponent: rendered start".into());
+    request_geolocation();
 
-pub struct GeoLocComponent {}
-
-impl Component for GeoLocComponent {
-    type Message = Msg;
-    type Properties = ();
-
-    fn create(_ctx: &Context<Self>) -> Self {
-        Self {}
-    }
-
-    fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        console::log_1(&"GeoLocComponent: rendered start".into());
-        request_geolocation();
-    }
-
-    fn update(&mut self, _ctx: &Context<Self>, _msg: Self::Message) -> bool {
-        false
-    }
-
-    fn changed(&mut self, _ctx: &Context<Self>, _old_props: &Self::Properties) -> bool {
-        true
-    }
-
-    fn view(&self, ctx: &Context<Self>) -> Html {
-        html! {
-            <div>
-                <button onclick={ctx.link().callback(|_| Msg::RequestLocation)}>{ "Request Location" }</button>
-            </div>
-        }
-    }
+    html! {}
 }
 
 /// `https://chat.openai.com`

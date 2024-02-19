@@ -15,11 +15,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use axum::routing::post;
 use axum::{response::IntoResponse, routing::get, Router};
 use clap::Parser;
 use tokio::sync::broadcast;
 use tower_http::services::ServeDir;
 
+mod api_auth;
 mod ws_handler;
 
 use crate::ws_handler::ws_handler;
@@ -93,6 +95,7 @@ async fn main() -> Result<(), std::io::Error> {
     let app = Router::new()
         .route("/api/hello", get(hello))
         .route("/ws", get(ws_handler))
+        .route("/api/auth/login", post(api_auth::api_auth_login))
         .fallback_service(static_files_service)
         .with_state(app_state);
 

@@ -21,3 +21,4 @@ futures-util = { version = "0.3", default-features = false, features = [
     "sink",
     "std",
 ] }
+serde = { version = "1.0.196", features = ["derive"] }
