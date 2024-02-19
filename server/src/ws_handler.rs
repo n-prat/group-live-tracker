@@ -77,7 +77,7 @@ async fn handle_socket_chat(socket: WebSocket, _who: SocketAddr, state: Arc<AppS
     while let Some(Ok(message)) = receiver.next().await {
         if let Message::Text(name) = message {
             // If username that is sent by client is not taken, fill username string.
-            check_username(&state, &mut username, &name, true);
+            username = name;
 
             // If not empty we want to quit the loop else we want to quit function.
             if !username.is_empty() {
@@ -136,8 +136,6 @@ async fn handle_socket_chat(socket: WebSocket, _who: SocketAddr, state: Arc<AppS
     let msg = format!("{username} left.");
     tracing::debug!("{msg}");
     let _ = state.chat_broadcast_sender.send(msg);
-
-    remove_user(&state, &username, true);
 }
 
 ///
@@ -153,7 +151,7 @@ async fn handle_socket_geolocation(socket: WebSocket, _who: SocketAddr, state: A
     while let Some(Ok(message)) = receiver.next().await {
         if let Message::Text(name) = message {
             // If username that is sent by client is not taken, fill username string.
-            check_username(&state, &mut username, &name, false);
+            username = name;
 
             // If not empty we want to quit the loop else we want to quit function.
             if !username.is_empty() {
@@ -212,39 +210,6 @@ async fn handle_socket_geolocation(socket: WebSocket, _who: SocketAddr, state: A
     let msg = format!("{username} left.");
     tracing::debug!("{msg}");
     let _ = state.location_broadcast_sender.send(msg);
-
-    remove_user(&state, &username, false);
-}
-
-/// Use a AppState to get a new unique username
-/// ALSO increment `state.nb_users`
-fn check_username(
-    state: &AppState,
-    result_username: &mut String,
-    username_to_check: &str,
-    is_chat: bool,
-) {
-    let mut users_set = if is_chat {
-        state.chat_users_set.lock().unwrap()
-    } else {
-        state.location_users_set.lock().unwrap()
-    };
-
-    if !users_set.contains(username_to_check) {
-        users_set.insert(username_to_check.to_owned());
-
-        result_username.push_str(username_to_check);
-    }
-}
-
-/// decrement `state.nb_users`
-fn remove_user(state: &AppState, username: &str, is_chat: bool) {
-    let mut users_set = if is_chat {
-        state.chat_users_set.lock().unwrap()
-    } else {
-        state.location_users_set.lock().unwrap()
-    };
-    users_set.remove(username);
 }
 
 // /// helper to print contents of messages to stdout. Has special treatment for Close.

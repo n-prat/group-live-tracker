@@ -51,9 +51,7 @@ struct Opt {
 /// Our shared state
 struct AppState {
     /// We require unique usernames. This tracks which usernames have been taken.
-    chat_users_set: Mutex<HashSet<String>>,
-    /// We require unique usernames. This tracks which usernames have been taken.
-    location_users_set: Mutex<HashSet<String>>,
+    users_set: Mutex<HashSet<String>>,
     /// Channel used to send messages to all connected clients.
     chat_broadcast_sender: broadcast::Sender<String>,
     /// Channel used to send locations to all connected clients.
@@ -80,14 +78,12 @@ async fn main() -> Result<(), std::io::Error> {
     let static_files_service = ServeDir::new(assets_dir).append_index_html_on_directories(true);
 
     // Set up application state for use with with_state().
-    let chat_users_set = Mutex::new(HashSet::new());
-    let location_users_set = Mutex::new(HashSet::new());
+    let users_set = Mutex::new(HashSet::new());
     let (chat_tx, _rx) = broadcast::channel(100);
     let (location_tx, _rx) = broadcast::channel(100);
 
     let app_state = Arc::new(AppState {
-        chat_users_set,
-        location_users_set,
+        users_set,
         chat_broadcast_sender: chat_tx,
         location_broadcast_sender: location_tx,
     });
@@ -95,7 +91,14 @@ async fn main() -> Result<(), std::io::Error> {
     let app = Router::new()
         .route("/api/hello", get(hello))
         .route("/ws", get(ws_handler))
-        .route("/api/auth/login", post(api_auth::api_auth_login))
+        .route(
+            "/api/auth/login",
+            // cf https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/axum/src/lib.rs#L266
+            post({
+                let app_state = Arc::clone(&app_state);
+                move |body| api_auth::api_auth_login(body, app_state)
+            }),
+        )
         .fallback_service(static_files_service)
         .with_state(app_state);
 
