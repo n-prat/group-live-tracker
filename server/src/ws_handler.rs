@@ -7,18 +7,30 @@ use std::sync::Arc;
 
 use axum::{
     extract::ws::{Message, WebSocket, WebSocketUpgrade},
-    response::IntoResponse,
+    response::Response,
 };
 use axum_extra::headers;
 use axum_extra::TypedHeader;
 //allows to extract the IP of connecting user
 use axum::extract::connect_info::ConnectInfo;
 //allows to split the websocket stream into separate TX and RX branches
+use axum::extract::Query;
 use axum::extract::State;
 use futures::SinkExt;
 use futures::StreamExt;
+use jsonwebtoken::{decode, Validation};
+use serde::Deserialize;
 
-use crate::AppState;
+use crate::{
+    auth_jwt::{Claims, KEYS},
+    errors_and_responses::AppError,
+    AppState,
+};
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct QueryToken {
+    token: String,
+}
 
 /// The handler for the HTTP request (this gets called when the HTTP GET lands at the start
 /// of websocket negotiation). After this completes, the actual switching from HTTP to
@@ -30,21 +42,30 @@ pub(crate) async fn ws_handler(
     user_agent: Option<TypedHeader<headers::UserAgent>>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     State(state): State<Arc<AppState>>,
-    // claims: Claims,
-) -> impl IntoResponse {
+    // _claims: Claims, // NO! no easy way to add custom headers in yewhook's websocket to we use a query param "token" instead
+    query_token: Query<QueryToken>,
+) -> Result<Response, AppError> {
     let user_agent = if let Some(TypedHeader(user_agent)) = user_agent {
         user_agent.to_string()
     } else {
         String::from("Unknown browser")
     };
-    tracing::debug!("ws_handler: `{user_agent}` at {addr} connected.");
+    tracing::debug!("ws_handler: `{user_agent}` at {addr} connected. [token = {query_token:?}]");
+
+    // cf "impl<S> FromRequestParts<S> for Claims"
+    // Decode the token here, similar to how you would in your FromRequestParts implementation
+    // This is just a placeholder, replace it with your actual decoding logic
+    let _token_data = decode::<Claims>(&query_token.token, &KEYS.decoding, &Validation::default())
+        .map_err(|_jwt_err| AppError::LoginError)?;
+
     // finalize the upgrade process by returning upgrade callback.
     // we can customize the callback by sending additional info such as address.
-    ws.protocols(["chat", "geolocation"])
+    Ok(ws
+        .protocols(["chat", "geolocation"])
         .on_failed_upgrade(|error| {
             tracing::error!("ws_handler on_failed_upgrade: error: {error}");
         })
-        .on_upgrade(move |socket| handle_socket(socket, addr, state))
+        .on_upgrade(move |socket| handle_socket(socket, addr, state)))
 }
 
 async fn handle_socket(socket: WebSocket, addr: SocketAddr, state: Arc<AppState>) {

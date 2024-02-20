@@ -41,7 +41,7 @@ pub fn header_component() -> Html {
                 //     }
                 // };
                 set_page_loading(false, dispatch.clone());
-                set_auth_user(None, dispatch2.clone());
+                set_auth_user(None, None, dispatch2.clone());
                 set_show_alert("Logged out successfully".to_string(), dispatch);
             });
         })

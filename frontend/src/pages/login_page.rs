@@ -156,12 +156,13 @@ pub fn login_page() -> Html {
                         console::debug_1(&"login_page: on_submit Callback form_json".into());
                         let res = api_login_user(&form_json).await;
                         match res {
-                            Ok(_) => {
+                            Ok(res) => {
                                 set_page_loading(false, dispatch);
                                 set_auth_user(
                                     Some(User {
                                         email: form_data.email,
                                     }),
+                                    Some(res.access_token),
                                     dispatch2.clone(),
                                 );
                                 navigator.push(&router::Route::HomePage);

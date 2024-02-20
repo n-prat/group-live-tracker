@@ -5,17 +5,25 @@
 // https://github.com/snapview/tokio-tungstenite/issues/278 related ?
 use yew::prelude::*;
 use yew_hooks::prelude::*;
+use yewdux::use_store;
 
-use crate::app::WS_ROOT;
+use crate::{app::WS_ROOT, store::PersistentStore};
 
 #[function_component(WebSocketChatComponent)]
 pub(crate) fn websocket_chat_component() -> Html {
     let history = use_list(vec![]);
+    let (store, _dispatch) = use_store::<PersistentStore>();
+    let token = store.token.clone().unwrap_or_default();
+
+    // TODO?
+    // if auth_user.is_none() {
+    //     return html! {<LoginPage />};
+    // }
 
     let ws = {
         let history = history.clone();
-        use_websocket_with_options(
-            WS_ROOT.to_string(),
+        let ws_handle: UseWebSocketHandle = use_websocket_with_options(
+            format!("{}?token={}", WS_ROOT, token),
             UseWebSocketOptions {
                 // Receive message by callback `onmessage`.
                 onmessage: Some(Box::new(move |message| {
@@ -25,7 +33,20 @@ pub(crate) fn websocket_chat_component() -> Html {
                 protocols: Some(vec!["chat".to_string()]),
                 ..Default::default()
             },
-        )
+        );
+
+        // TODO set header eg "Authorization Bearer"?
+        // let my_websocket: web_sys::WebSocket = TODO;
+        // if let Some(ref ws) = *ws_handle {
+        //     let my_websocket: web_sys::WebSocket = unsafe { std::mem::transmute(ws) };
+        //     // Now you can use my_websocket
+        // }
+        // if let Some(ref ws) = *ws_handle.ws.borrow() {
+        //     let my_websocket: web_sys::WebSocket = ws.clone();
+        //     // Now you can use my_websocket
+        // }
+
+        ws_handle
     };
     let onclick = {
         let ws = ws.clone();
@@ -42,6 +63,8 @@ pub(crate) fn websocket_chat_component() -> Html {
             ws.open();
         })
     };
+
+    // *ws.;
 
     html! {
         <>

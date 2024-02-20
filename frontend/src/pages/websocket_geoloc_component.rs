@@ -5,17 +5,26 @@
 // https://github.com/snapview/tokio-tungstenite/issues/278 related ?
 use yew::prelude::*;
 use yew_hooks::prelude::*;
+use yewdux::use_store;
 
-use crate::app::WS_ROOT;
+use crate::{app::WS_ROOT, store::PersistentStore};
 
 #[function_component(WebSocketGeoLocComponent)]
 pub(crate) fn websocket_geolocation_component() -> Html {
     let history = use_list(vec![]);
 
+    let (store, _dispatch) = use_store::<PersistentStore>();
+    let token = store.token.clone().unwrap_or_default();
+
+    // TODO?
+    // if auth_user.is_none() {
+    //     return html! {<LoginPage />};
+    // }
+
     let ws = {
         let history = history.clone();
         use_websocket_with_options(
-            WS_ROOT.to_string(),
+            format!("{}?token={}", WS_ROOT, token),
             UseWebSocketOptions {
                 // Receive message by callback `onmessage`.
                 onmessage: Some(Box::new(move |message| {

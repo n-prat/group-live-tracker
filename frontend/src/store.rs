@@ -22,6 +22,7 @@ pub struct Store {
 #[store(storage = "local")]
 pub struct PersistentStore {
     pub auth_user: Option<User>,
+    pub token: Option<String>,
 }
 
 pub fn set_page_loading(loading: bool, dispatch: Dispatch<Store>) {
@@ -30,9 +31,14 @@ pub fn set_page_loading(loading: bool, dispatch: Dispatch<Store>) {
     })
 }
 
-pub fn set_auth_user(user: Option<User>, dispatch: Dispatch<PersistentStore>) {
+pub fn set_auth_user(
+    user: Option<User>,
+    token: Option<String>,
+    dispatch: Dispatch<PersistentStore>,
+) {
     dispatch.reduce_mut(move |store| {
         store.auth_user = user;
+        store.token = token;
     })
 }
 

@@ -47,7 +47,7 @@ use crate::{user::check_user, AppState};
 //     -H 'Authorization: Bearer blahblahblah' \
 //     http://localhost:3000/protected
 
-static KEYS: Lazy<Keys> = Lazy::new(|| {
+pub(crate) static KEYS: Lazy<Keys> = Lazy::new(|| {
     let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
     Keys::new(secret.as_bytes())
 });
@@ -159,9 +159,9 @@ impl IntoResponse for AuthError {
     }
 }
 
-struct Keys {
+pub(crate) struct Keys {
     encoding: EncodingKey,
-    decoding: DecodingKey,
+    pub(crate) decoding: DecodingKey,
 }
 
 impl Keys {
