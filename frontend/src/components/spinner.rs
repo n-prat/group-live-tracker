@@ -4,9 +4,13 @@ use yew::prelude::*;
 
 #[derive(Debug, Properties, PartialEq)]
 pub struct Props {
+    #[prop_or_default]
     pub width: Option<String>,
+    #[prop_or_default]
     pub height: Option<String>,
+    #[prop_or_default]
     pub color: Option<String>,
+    #[prop_or_default]
     pub bg_color: Option<String>,
 }
 

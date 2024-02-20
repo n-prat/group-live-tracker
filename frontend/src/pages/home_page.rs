@@ -4,7 +4,7 @@ use yew::prelude::*;
 
 use crate::components::header::Header;
 use crate::pages::geo_loc_component::GeoLocComponent;
-use crate::pages::map_component::MapComponent;
+use crate::pages::map_component::{MapComponent, PARIS_LAT, PARIS_LNG};
 use crate::pages::websocket_chat_component::WebSocketChatComponent;
 use crate::pages::websocket_geoloc_component::WebSocketGeoLocComponent;
 
@@ -45,7 +45,7 @@ pub fn home_page() -> Html {
         <ContextProvider<AppCtx> context={app_ctx}>
 
             // <Switch<Route> render={switch} />
-            <MapComponent markers={vec![]}/>
+            <MapComponent markers={vec![(PARIS_LAT, PARIS_LNG)]}/>
             <WebSocketChatComponent />
             <GeoLocComponent />
             <WebSocketGeoLocComponent />

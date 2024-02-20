@@ -11,11 +11,11 @@
 
 mod api;
 mod app;
+mod common;
 mod components;
 mod pages;
 mod router;
 mod store;
-mod websockets_common;
 
 fn main() {
     wasm_logger::init(wasm_logger::Config::new(log::Level::Trace));

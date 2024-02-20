@@ -11,6 +11,8 @@ use yewdux::prelude::use_store;
 use crate::router::{switch, Route};
 use crate::store::Store;
 
+pub(crate) const WS_ROOT: &str = "ws://localhost:8081/ws";
+
 #[function_component(App)]
 pub fn app() -> Html {
     let (store, _) = use_store::<Store>();

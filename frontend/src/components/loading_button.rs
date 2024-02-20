@@ -6,8 +6,11 @@ use yew::prelude::*;
 #[derive(Debug, Properties, PartialEq)]
 pub struct Props {
     pub loading: bool,
+    #[prop_or_default]
     pub btn_color: Option<String>,
+    #[prop_or_default]
     pub text_color: Option<String>,
+    #[prop_or_default]
     pub children: Children,
 }
 
