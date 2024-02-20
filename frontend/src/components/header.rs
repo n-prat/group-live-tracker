@@ -3,7 +3,7 @@
 use crate::{
     api::user_api::api_logout_user,
     router::{self, Route},
-    store::{set_auth_user, set_page_loading, set_show_alert, Store},
+    store::{set_auth_user, set_page_loading, set_show_alert, PersistentStore, Store},
 };
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
@@ -13,15 +13,18 @@ use yewdux::prelude::*;
 #[function_component(Header)]
 pub fn header_component() -> Html {
     let (store, dispatch) = use_store::<Store>();
-    let user = store.auth_user.clone();
+    let (persistent_store, dispatch2) = use_store::<PersistentStore>();
+    let user = persistent_store.auth_user.clone();
     let navigator = use_navigator().unwrap();
 
     let handle_logout = {
         let store_dispatch = dispatch.clone();
+        let store_dispatch2 = dispatch2.clone();
         let cloned_navigator = navigator.clone();
 
         Callback::from(move |_: MouseEvent| {
             let dispatch = store_dispatch.clone();
+            let dispatch2 = store_dispatch2.clone();
             let navigator = cloned_navigator.clone();
             spawn_local(async move {
                 set_page_loading(true, dispatch.clone());
@@ -29,7 +32,7 @@ pub fn header_component() -> Html {
                 match res {
                     Ok(_) => {
                         set_page_loading(false, dispatch.clone());
-                        set_auth_user(None, dispatch.clone());
+                        set_auth_user(None, dispatch2.clone());
                         set_show_alert("Logged out successfully".to_string(), dispatch);
                         navigator.push(&router::Route::LoginPage);
                     }

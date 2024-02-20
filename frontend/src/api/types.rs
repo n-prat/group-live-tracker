@@ -6,14 +6,14 @@ use serde::{Deserialize, Serialize};
 #[allow(non_snake_case)]
 #[derive(Debug, Serialize, Deserialize, Default, PartialEq, Clone)]
 pub struct User {
-    pub id: String,
-    pub name: String,
+    // pub id: String,
+    // pub name: String,
     pub email: String,
-    pub role: String,
-    pub photo: String,
-    pub verified: bool,
-    pub createdAt: DateTime<Utc>,
-    pub updatedAt: DateTime<Utc>,
+    // pub role: String,
+    // pub photo: String,
+    // pub verified: bool,
+    // pub createdAt: DateTime<Utc>,
+    // pub updatedAt: DateTime<Utc>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

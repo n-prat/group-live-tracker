@@ -13,9 +13,15 @@ pub struct AlertInput {
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone, PartialEq, Store)]
 pub struct Store {
-    pub auth_user: Option<User>,
     pub page_loading: bool,
     pub alert_input: AlertInput,
+}
+
+/// We split the "Store" in two: a part that is in memory only; and this: that is persisted with local storage (cookies)
+#[derive(Debug, Serialize, Deserialize, Default, Clone, PartialEq, Store)]
+#[store(storage = "local")]
+pub struct PersistentStore {
+    pub auth_user: Option<User>,
 }
 
 pub fn set_page_loading(loading: bool, dispatch: Dispatch<Store>) {
@@ -24,7 +30,7 @@ pub fn set_page_loading(loading: bool, dispatch: Dispatch<Store>) {
     })
 }
 
-pub fn set_auth_user(user: Option<User>, dispatch: Dispatch<Store>) {
+pub fn set_auth_user(user: Option<User>, dispatch: Dispatch<PersistentStore>) {
     dispatch.reduce_mut(move |store| {
         store.auth_user = user;
     })

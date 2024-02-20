@@ -3,11 +3,12 @@ use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
 
+use crate::api::types::User;
 use crate::api::user_api::api_login_user;
 use crate::components::form_input::FormInput;
 use crate::components::loading_button::LoadingButton;
 use crate::router::{self};
-use crate::store::{set_page_loading, set_show_alert, Store};
+use crate::store::{set_auth_user, set_page_loading, set_show_alert, PersistentStore, Store};
 
 use serde::{Deserialize, Serialize};
 use validator::{Validate, ValidationErrors};
@@ -50,6 +51,7 @@ fn get_input_callback(
 #[function_component(LoginPage)]
 pub fn login_page() -> Html {
     let (store, dispatch) = use_store::<Store>();
+    let (persistent_store, dispatch2) = use_store::<PersistentStore>();
     let form = use_state(|| LoginUserSchema::default());
     let validation_errors = use_state(|| Rc::new(RefCell::new(ValidationErrors::new())));
     let navigator = use_navigator().unwrap();
@@ -118,6 +120,7 @@ pub fn login_page() -> Html {
         console::debug_1(&format!("login_page: on_submit: cloned_form: {:?}", cloned_form).into());
         let cloned_validation_errors = validation_errors.clone();
         let store_dispatch = dispatch.clone();
+        let store_dispatch2 = dispatch2.clone();
         let cloned_navigator = navigator.clone();
 
         let cloned_email_input_ref = email_input_ref.clone();
@@ -142,6 +145,7 @@ pub fn login_page() -> Html {
             event.prevent_default();
 
             let dispatch = store_dispatch.clone();
+            let dispatch2 = store_dispatch2.clone();
             let form = cloned_form.clone();
             let validation_errors = cloned_validation_errors.clone();
             let navigator = cloned_navigator.clone();
@@ -168,6 +172,12 @@ pub fn login_page() -> Html {
                         match res {
                             Ok(_) => {
                                 set_page_loading(false, dispatch);
+                                set_auth_user(
+                                    Some(User {
+                                        email: form_data.email,
+                                    }),
+                                    dispatch2.clone(),
+                                );
                                 navigator.push(&router::Route::HomePage);
                             }
                             Err(e) => {

@@ -13,6 +13,7 @@ pub(crate) fn GeoLocComponent() -> Html {
 }
 
 /// `https://chat.openai.com`
+// TODO MAYBE use yew-hooks "use_location"?
 fn request_geolocation() {
     // Define options for geolocation request
     // let options = GeolocationOptions::new()
