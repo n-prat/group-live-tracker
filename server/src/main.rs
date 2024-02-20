@@ -15,6 +15,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use auth_jwt::Claims;
 use axum::routing::post;
 use axum::{response::IntoResponse, routing::get, Router};
 use clap::Parser;
@@ -22,6 +23,9 @@ use tokio::sync::broadcast;
 use tower_http::services::ServeDir;
 
 mod api_auth;
+mod auth_jwt;
+mod errors_and_responses;
+mod user;
 mod ws_handler;
 
 use crate::ws_handler::ws_handler;
@@ -91,12 +95,20 @@ async fn main() -> Result<(), std::io::Error> {
     let app = Router::new()
         .route("/api/hello", get(hello))
         .route("/ws", get(ws_handler))
+        // .route(
+        //     "/api/auth/login",
+        //     // cf https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/axum/src/lib.rs#L266
+        //     post({
+        //         let app_state = Arc::clone(&app_state);
+        //         move |body| api_auth::api_auth_login(body, app_state)
+        //     }),
+        // )
         .route(
-            "/api/auth/login",
+            "/authorize",
             // cf https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/axum/src/lib.rs#L266
             post({
                 let app_state = Arc::clone(&app_state);
-                move |body| api_auth::api_auth_login(body, app_state)
+                move |body| auth_jwt::authorize(body, app_state)
             }),
         )
         .fallback_service(static_files_service)
@@ -125,6 +137,6 @@ async fn main() -> Result<(), std::io::Error> {
     .await
 }
 
-async fn hello() -> impl IntoResponse {
+async fn hello(_claims: Claims) -> impl IntoResponse {
     "hello from server!"
 }

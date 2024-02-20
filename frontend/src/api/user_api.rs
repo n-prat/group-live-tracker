@@ -33,7 +33,7 @@ use crate::app::API_ROOT;
 // }
 
 pub async fn api_login_user(credentials: &str) -> Result<UserLoginResponse, String> {
-    let response = match http::Request::post(&format!("{API_ROOT}/api/auth/login"))
+    let response = match http::Request::post(&format!("{API_ROOT}/authorize"))
         .header("Content-Type", "application/json")
         .credentials(http::RequestCredentials::Include)
         .body(credentials)
