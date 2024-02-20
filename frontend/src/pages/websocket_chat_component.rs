@@ -3,11 +3,10 @@
 // TODO maybe switch to tungstenite cf https://github.com/tokio-rs/axum/blob/main/examples/websockets/src/client.rs
 // b/c the whole "initial delay" sucks...
 // https://github.com/snapview/tokio-tungstenite/issues/278 related ?
-use web_sys::console::{self};
 use yew::prelude::*;
 use yew_hooks::prelude::*;
 
-use crate::{app::WS_ROOT, common::get_username_from_context};
+use crate::app::WS_ROOT;
 
 #[function_component(WebSocketChatComponent)]
 pub(crate) fn websocket_chat_component() -> Html {
@@ -30,7 +29,7 @@ pub(crate) fn websocket_chat_component() -> Html {
     };
     let onclick = {
         let ws = ws.clone();
-        let history = history.clone();
+        // let history = history.clone();
         Callback::from(move |_| {
             let message = "Hello, world!".to_string();
             ws.send(message.clone());

@@ -11,7 +11,6 @@
 
 mod api;
 mod app;
-mod common;
 mod components;
 mod pages;
 mod router;

@@ -1,17 +1,18 @@
 /// https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/app.rs
 ///
-use crate::components::{
-    alert::{AlertComponent, Props as AlertProps},
-    spinner::Spinner,
-};
 use yew::prelude::*;
 use yew_router::prelude::*;
 use yewdux::prelude::use_store;
 
+use crate::components::{
+    alert::{AlertComponent, Props as AlertProps},
+    spinner::Spinner,
+};
 use crate::router::{switch, Route};
 use crate::store::Store;
 
 pub(crate) const WS_ROOT: &str = "ws://localhost:8081/ws";
+pub(crate) const API_ROOT: &str = "http://localhost:8081";
 
 #[function_component(App)]
 pub fn app() -> Html {

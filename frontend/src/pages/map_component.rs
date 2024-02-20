@@ -2,7 +2,6 @@
 use gloo_utils::document;
 use leaflet::{CircleMarker, LatLng, Map, MapOptions, PathOptions, TileLayer};
 use wasm_bindgen::JsCast;
-use web_sys::console::{self};
 use web_sys::{Element, HtmlElement, Node};
 use yew::prelude::*;
 use yew::Properties;

@@ -1,36 +1,45 @@
-use std::rc::Rc;
-
 use yew::prelude::*;
+use yewdux::prelude::*;
 
 use crate::components::header::Header;
 use crate::pages::geo_loc_component::GeoLocComponent;
+use crate::pages::login_page::LoginPage;
 use crate::pages::map_component::{MapComponent, PARIS_LAT, PARIS_LNG};
 use crate::pages::websocket_chat_component::WebSocketChatComponent;
 use crate::pages::websocket_geoloc_component::WebSocketGeoLocComponent;
+use crate::store::PersistentStore;
 
-/// https://github.com/yewstack/yew/blob/d0419a278dc126af4556c9afae2ef6b00b5fef36/examples/contexts/src/msg_ctx.rs#L5
-#[derive(Clone, Debug, PartialEq)]
-pub struct AppCtxInternal {
-    pub(crate) username: Option<String>,
-}
+// /// https://github.com/yewstack/yew/blob/d0419a278dc126af4556c9afae2ef6b00b5fef36/examples/contexts/src/msg_ctx.rs#L5
+// #[derive(Clone, Debug, PartialEq)]
+// pub struct AppCtxInternal {
+//     pub(crate) username: Option<String>,
+// }
 
-impl Reducible for AppCtxInternal {
-    type Action = String;
+// impl Reducible for AppCtxInternal {
+//     type Action = String;
 
-    fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
-        AppCtxInternal {
-            username: Some(action),
-        }
-        .into()
-    }
-}
+//     fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
+//         AppCtxInternal {
+//             username: Some(action),
+//         }
+//         .into()
+//     }
+// }
 
-pub type AppCtx = UseReducerHandle<AppCtxInternal>;
+// pub type AppCtx = UseReducerHandle<AppCtxInternal>;
 
 #[function_component(HomePage)]
-pub fn home_page() -> Html {
-    // TODO? but does not work with "struct Component", only function_component
-    let app_ctx = use_reducer(|| AppCtxInternal { username: None });
+pub(crate) fn home_page() -> Html {
+    // TODO(auth) move that into a custom hook???
+    // MAYBE see https://yew.rs/docs/next/concepts/suspense ?
+    // and maybe https://github.com/yewstack/yew/issues/1526
+    // This is way more contrived than it should be...
+    let (store, _dispatch) = use_store::<PersistentStore>();
+    let auth_user = store.auth_user.clone();
+
+    if auth_user.is_none() {
+        return html! {<LoginPage />};
+    }
 
     html! {
       <>
@@ -42,15 +51,16 @@ pub fn home_page() -> Html {
             </div>
         </section>
 
-        <ContextProvider<AppCtx> context={app_ctx}>
+        // <ContextProvider<AppCtx> context={app_ctx}>
 
-            // <Switch<Route> render={switch} />
-            <MapComponent markers={vec![(PARIS_LAT, PARIS_LNG)]}/>
-            <WebSocketChatComponent />
-            <GeoLocComponent />
-            <WebSocketGeoLocComponent />
-            // <UsernameForm username=""/>
-        </ContextProvider<AppCtx>>
+        // <Switch<Route> render={switch} />
+        <MapComponent markers={vec![(PARIS_LAT, PARIS_LNG)]}/>
+        <WebSocketChatComponent />
+        <GeoLocComponent />
+        <WebSocketGeoLocComponent />
+        // <UsernameForm username=""/>
+
+        // </ContextProvider<AppCtx>>
 
         </>
     }

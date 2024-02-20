@@ -51,7 +51,7 @@ fn get_input_callback(
 #[function_component(LoginPage)]
 pub fn login_page() -> Html {
     let (store, dispatch) = use_store::<Store>();
-    let (persistent_store, dispatch2) = use_store::<PersistentStore>();
+    let (_persistent_store, dispatch2) = use_store::<PersistentStore>();
     let form = use_state(|| LoginUserSchema::default());
     let validation_errors = use_state(|| Rc::new(RefCell::new(ValidationErrors::new())));
     let navigator = use_navigator().unwrap();
@@ -103,7 +103,7 @@ pub fn login_page() -> Html {
                             cloned_validation_errors
                                 .borrow_mut()
                                 .errors_mut()
-                                .insert(field_name.clone(), error.clone());
+                                .insert(field_name, error.clone());
                         }
                     }
                 }

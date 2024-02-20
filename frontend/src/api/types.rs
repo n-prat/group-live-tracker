@@ -1,6 +1,5 @@
 /// https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/api/types.r
 ///
-use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[allow(non_snake_case)]
