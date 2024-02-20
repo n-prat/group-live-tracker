@@ -3,10 +3,10 @@ use std::rc::Rc;
 use yew::prelude::*;
 
 use crate::components::header::Header;
-use crate::geo_loc_component::GeoLocComponent;
-use crate::map_component::MapComponent;
-use crate::websocket_chat_component::WebSocketChatComponent;
-use crate::websocket_geoloc_component::WebSocketGeoLocComponent;
+use crate::pages::geo_loc_component::GeoLocComponent;
+use crate::pages::map_component::MapComponent;
+use crate::pages::websocket_chat_component::WebSocketChatComponent;
+use crate::pages::websocket_geoloc_component::WebSocketGeoLocComponent;
 
 /// https://github.com/yewstack/yew/blob/d0419a278dc126af4556c9afae2ef6b00b5fef36/examples/contexts/src/msg_ctx.rs#L5
 #[derive(Clone, Debug, PartialEq)]

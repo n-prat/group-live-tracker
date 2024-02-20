@@ -9,17 +9,12 @@
 // #![warn(clippy::panic)]
 // #![warn(clippy::unwrap_used)]
 
-mod components;
-// mod get_username_component;
 mod api;
 mod app;
-mod geo_loc_component;
-mod map_component;
+mod components;
 mod pages;
 mod router;
 mod store;
-mod websocket_chat_component;
-mod websocket_geoloc_component;
 mod websockets_common;
 
 fn main() {
