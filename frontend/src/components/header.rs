@@ -59,15 +59,15 @@ pub fn header_component() -> Html {
             </li>
             if user.is_some() {
                <>
-                <li>
-                  // TODO
-                  // <Link<Route> to={Route::ProfilePage} classes="text-ct-dark-600">{"Profile"}</Link<Route>>
-                </li>
-                <li
-                  class="cursor-pointer"
-                >
-                  {"Create Post"}
-                </li>
+                  // TODO ?
+                // <li>
+                //   <Link<Route> to={Route::ProfilePage} classes="text-ct-dark-600">{"Profile"}</Link<Route>>
+                // </li>
+                // <li
+                //   class="cursor-pointer"
+                // >
+                //   {"Create Post"}
+                // </li>
                 <li class="cursor-pointer" onclick={handle_logout}>
                   {"Logout"}
                 </li>
