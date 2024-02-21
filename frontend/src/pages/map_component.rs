@@ -1,7 +1,8 @@
 /// `https://github.com/slowtec/leaflet-rs/blob/master/examples/yew-component/src/components/map_component.rs`
 use gloo_utils::document;
-use leaflet::{CircleMarker, LatLng, Map, MapOptions, PathOptions, TileLayer};
-use wasm_bindgen::JsCast;
+use leaflet::{Circle, CircleMarker, LatLng, Map, MapOptions, PathOptions, TileLayer};
+use leaflet::{Tooltip, TooltipOptions};
+use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{Element, HtmlElement, Node};
 use yew::prelude::*;
 use yew::Properties;
@@ -36,7 +37,7 @@ pub(crate) fn map_component() -> Html {
     // leaflet_map.add_layer(&circle_marker);
 
     for (username, (lat, lng)) in &store.locations {
-        add_circle_with_options(&leaflet_map, *lat, *lng);
+        add_circle_with_options(&leaflet_map, *lat, *lng, username);
     }
 
     html! {
@@ -56,10 +57,20 @@ pub(crate) fn map_component() -> Html {
 }
 
 /// https://github.com/slowtec/leaflet-rs/blob/09d02e74bc30d519a5a30bb130516aa161f0415a/examples/basic/src/lib.rs#L76
-fn add_circle_with_options(map: &Map, lat: f64, lng: f64) {
+fn add_circle_with_options(map: &Map, lat: f64, lng: f64, username: &str) {
+    let lat_lng = LatLng::new(lat, lng);
+
     let options = leaflet::CircleOptions::default();
-    options.set_radius(100.0);
-    leaflet::Circle::new_with_options(&LatLng::new(lat, lng), &options).add_to(map);
+    let circle = Circle::new_with_options(&lat_lng, &options);
+    // circle.set_style(&PathOptions::default());
+
+    let tooltip_options: TooltipOptions = TooltipOptions::new();
+    tooltip_options.set_permanent(true);
+    let tooltip = Tooltip::new_with_lat_lng(&lat_lng, &tooltip_options);
+    tooltip.set_content(&JsValue::from_str(username));
+    circle.bind_tooltip(&tooltip);
+    // circle.bind_tooltip(&Tooltip::new(&TooltipOptions::new(), map.lag));
+    circle.add_to(map);
 }
 
 fn render_map(container: &HtmlElement) -> Html {
