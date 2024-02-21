@@ -11,11 +11,11 @@ Based on https://github.com/rksm/axum-yew-setup/
 
 ## TODO
 
-- https://yew.rs/docs/next/concepts/function-components/communication
-  - When receiving a message that is lat/lon, it should update the map
-- the map SHOULD display all the locations for all users
-- leaflet: ask for user's location
-- https://github.com/codec-abc/Yew-WebRTC-Chat : make joining automatic; AVOID copy-pasting codes around
+- display the history of a SPECIFIC user instead the whole .gpx track
+- allow to select the "leader" that will be used for the history
+
+### ARCHIVE
+
 - see https://github.com/nag763/tchatchers for templates/styles/etc
 - see https://github.com/tokio-rs/axum/tree/main/examples/chat
 - Websocket: MAYBE TRY https://github.com/najamelan/ws_stream_wasm
@@ -23,6 +23,8 @@ Based on https://github.com/rksm/axum-yew-setup/
 - related ???
   - https://github.com/snapview/tokio-tungstenite/issues/278
   - https://github.com/tokio-rs/axum/issues/1961
+
+
 
 ## DEV/local test
 
