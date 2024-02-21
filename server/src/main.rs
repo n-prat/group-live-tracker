@@ -20,6 +20,8 @@ use axum::routing::post;
 use axum::{response::IntoResponse, routing::get, Router};
 use clap::Parser;
 use tokio::sync::broadcast;
+use tower_http::cors::Any;
+use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
 mod api_auth;
@@ -92,6 +94,15 @@ async fn main() -> Result<(), std::io::Error> {
         location_broadcast_sender: location_tx,
     });
 
+    // let origins = [
+    //     "https://localhost:8080".parse().unwrap(),
+    //     "http://localhost:8081".parse().unwrap(),
+    // ];
+    // let cors_layer = CorsLayer::new()
+    //     .allow_origin(origins)
+    //     .allow_credentials(true);
+    let cors_layer = CorsLayer::very_permissive();
+
     let app = Router::new()
         .route("/api/hello", get(hello))
         .route("/ws", get(ws_handler))
@@ -112,6 +123,7 @@ async fn main() -> Result<(), std::io::Error> {
             }),
         )
         .fallback_service(static_files_service)
+        .layer(cors_layer)
         .with_state(app_state);
 
     // let sock_addr = SocketAddr::from((
