@@ -68,14 +68,29 @@ pub(crate) fn websocket_chat_component() -> Html {
 
     html! {
         <>
-            <p>
-                <button onclick={onopen} disabled={*ws.ready_state != UseWebSocketReadyState::Closed}>{ "Connect" }</button>
-                <button {onclick} disabled={*ws.ready_state != UseWebSocketReadyState::Open}>{ "Send with options" }</button>
-            </p>
-            <h1>{"WebSocket Messages:"}</h1>
-            <ul>
-                { for history.current().iter().map(|message| html! { <p>{ message }</p> }) }
-            </ul>
+        // <section class="bg-ct-blue-600 min-h-screen grid place-items-center">
+        //     <div class="w-full">
+
+                <h1>{"WebSocket Messages:"}</h1>
+
+        //     </div>
+        // </section>
+
+
+        <div class="p-6 max-w-sm mx-auto bg-white rounded-xl shadow-lg flex items-center space-x-4">
+        // <div class="shrink-0">
+        //     <img class="h-12 w-12" src="/img/logo.svg" alt="ChitChat Logo">
+        // </div>
+            <div>
+                <button class="bg-violet-500 hover:bg-violet-600 active:bg-violet-700 focus:outline-none focus:ring focus:ring-violet-300 disabled:opacity-75" onclick={onopen} disabled={*ws.ready_state != UseWebSocketReadyState::Closed}>{ "Connect" }</button>
+                <button class="bg-violet-500 hover:bg-violet-600 active:bg-violet-700 focus:outline-none focus:ring focus:ring-violet-300 disabled:opacity-75" {onclick} disabled={*ws.ready_state != UseWebSocketReadyState::Open}>{ "Send" }</button>
+                <p class="text-slate-500">{ "WebSocket Messages:" }</p>
+                <ul>
+                    { for history.current().iter().map(|message| html! { <p class="text-slate-500">{ message }</p> }) }
+                </ul>
+            </div>
+        </div>
+
         </>
     }
 }

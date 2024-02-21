@@ -42,26 +42,29 @@ pub(crate) fn home_page() -> Html {
     }
 
     html! {
-      <>
-        <Header />
+    <div class="flex flex-col min-h-screen flex-grow">
+        <header class="bg-blue-500 p-4 text-black">
+            <Header />
+        </header>
 
-        <section class="bg-ct-blue-600 min-h-screen pt-20">
-            <div class="max-w-4xl mx-auto bg-ct-dark-100 rounded-md h-[20rem] flex justify-center items-center">
-                <p class="text-3xl font-semibold">{"Welcome to Rust, Yew.rs and WebAssembly"}</p>
+        <div class="flex flex-row flex-grow">
+            <div class="basis-3/4 bg-gray-200 p-4">
+                <MapComponent markers={vec![(PARIS_LAT, PARIS_LNG)]}/>
             </div>
-        </section>
+
+            <div class="basis-1/4 bg-gray-200 p-4">
+                <WebSocketChatComponent />
+            </div>
+
+            <GeoLocComponent />
+            <WebSocketGeoLocComponent />
+        </div>
+
 
         // <ContextProvider<AppCtx> context={app_ctx}>
-
         // <Switch<Route> render={switch} />
-        <MapComponent markers={vec![(PARIS_LAT, PARIS_LNG)]}/>
-        <WebSocketChatComponent />
-        <GeoLocComponent />
-        <WebSocketGeoLocComponent />
-        // <UsernameForm username=""/>
-
         // </ContextProvider<AppCtx>>
 
-        </>
+    </div>
     }
 }

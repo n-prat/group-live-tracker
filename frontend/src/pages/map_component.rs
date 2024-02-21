@@ -29,7 +29,7 @@ impl PartialEq for MapProps {
 pub(crate) fn map_component(props: &MapProps) -> Html {
     let container: Element = document().create_element("div").unwrap();
     let container: HtmlElement = container.dyn_into().unwrap();
-    container.set_class_name("map");
+    container.set_class_name("map h-full");
     let leaflet_map = Map::new_with_element(&container, &MapOptions::default());
 
     leaflet_map.set_view(&LatLng::new(PARIS_LAT, PARIS_LNG), 11.0);
@@ -49,9 +49,18 @@ pub(crate) fn map_component(props: &MapProps) -> Html {
     add_circle_with_options(&leaflet_map, props.markers[0].0, props.markers[0].1);
 
     html! {
-        <div id="map" class="map-container component-container">
-            {render_map(&container)}
-        </div>
+        // <div id="map" class="map-container component-container">
+        //     {render_map(&container)}
+        // </div>
+
+        // <section class="bg-ct-blue-600 min-h-screen pt-20">
+        //  max-w-4xl mx-auto bg-ct-dark-100 rounded-md h-[20rem] flex justify-center items-center
+            <div class="h-full">
+                // <div id="map">
+                    {render_map(&container)}
+                // </div>
+            </div>
+        // </section>
     }
 }
 

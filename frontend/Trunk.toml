@@ -4,3 +4,17 @@ dist = "../dist"
 
 [[proxy]]
 backend = "http://[::1]:8081/api/"
+
+# [[hooks]]
+# stage = "post_build"
+# command = "sh"
+# # using tailwindcss-bin instead of npm/node
+# # command_arguments = ["-c", "npx tailwindcss -i ./styles/tailwind.css -o ./dist/.stage/index.css"]
+# # NOTE: ./dev.sh is called from the top-level dir, NOT frontend/ so it generates in /dist directly
+# # -> so MUST use "../dist"
+# command_arguments = [
+#     "-c",
+#     "eval echo 'running tailwindcss in $PWD :' && tailwindcss -i ./styles/tailwind.css -o $TRUNK_DIST_DIR/tailwind.css",
+# ]
+# --> NO need for this cf https://github.com/trunk-rs/trunk/blob/6594336dead4b97e7f549dacc748eb3d4c0c160f/examples/yew-tailwindcss/index.html#L8
+#     and https://github.com/trunk-rs/trunk/blob/6594336dead4b97e7f549dacc748eb3d4c0c160f/site/content/assets.md?plain=1#L59

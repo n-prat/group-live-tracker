@@ -1,3 +1,4 @@
+use web_sys::console;
 /// `https://chat.openai.com`
 /// See also https://github.com/jetli/yew-hooks/blob/e31debde4ce3c8c524c56303255baa833a0f0b79/crates/yew-hooks/src/hooks/use_websocket.rs#L163
 // TODO maybe switch to tungstenite cf https://github.com/tokio-rs/axum/blob/main/examples/websockets/src/client.rs
@@ -22,13 +23,16 @@ pub(crate) fn websocket_geolocation_component() -> Html {
     // }
 
     let ws = {
-        let history = history.clone();
+        // let history = history.clone();
         use_websocket_with_options(
             format!("{}?token={}", WS_ROOT, token),
             UseWebSocketOptions {
                 // Receive message by callback `onmessage`.
                 onmessage: Some(Box::new(move |message| {
                     history.push(format!("[recv]: {}", message));
+                    console::log_1(
+                        &format!("WebSocketGeoLocComponent: [recv]: {}", message).into(),
+                    );
                 })),
                 manual: Some(false),
                 protocols: Some(vec!["geolocation".to_string()]),
@@ -36,32 +40,34 @@ pub(crate) fn websocket_geolocation_component() -> Html {
             },
         )
     };
-    let onclick = {
-        let ws = ws.clone();
-        // let history = history.clone();
-        Callback::from(move |_| {
-            let message = "Hello, world!".to_string();
-            ws.send(message.clone());
-            // history.push(format!("[send]: {}", message));
-        })
-    };
-    let onopen = {
-        let ws = ws.clone();
-        Callback::from(move |_| {
-            ws.open();
-        })
-    };
+    // let onclick = {
+    //     let ws = ws.clone();
+    //     // let history = history.clone();
+    //     Callback::from(move |_| {
+    //         let message = "Hello, world!".to_string();
+    //         ws.send(message.clone());
+    //         // history.push(format!("[send]: {}", message));
+    //     })
+    // };
+    // let onopen = {
+    //     let ws = ws.clone();
+    //     Callback::from(move |_| {
+    //         ws.open();
+    //     })
+    // };
 
     html! {
         <>
-            <p>
-                <button onclick={onopen} disabled={*ws.ready_state != UseWebSocketReadyState::Closed}>{ "Connect" }</button>
-                <button {onclick} disabled={*ws.ready_state != UseWebSocketReadyState::Open}>{ "Send with options" }</button>
-            </p>
-            <h1>{"WebSocket Messages:"}</h1>
-            <ul>
-                { for history.current().iter().map(|message| html! { <p>{ message }</p> }) }
-            </ul>
+        // <div class="w-full">
+        //     <p>
+        //         <button onclick={onopen} disabled={*ws.ready_state != UseWebSocketReadyState::Closed}>{ "Connect" }</button>
+        //         <button {onclick} disabled={*ws.ready_state != UseWebSocketReadyState::Open}>{ "Send with options" }</button>
+        //     </p>
+        //     <h1>{"WebSocket Messages:"}</h1>
+        //     <ul>
+        //         { for history.current().iter().map(|message| html! { <p>{ message }</p> }) }
+        //     </ul>
+        // </div>
         </>
     }
 }
