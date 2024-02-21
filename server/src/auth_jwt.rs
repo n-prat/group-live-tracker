@@ -175,7 +175,7 @@ impl Keys {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct Claims {
-    sub: String,
+    pub(crate) sub: String,
     company: String,
     exp: usize,
 }

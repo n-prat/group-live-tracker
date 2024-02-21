@@ -55,7 +55,7 @@ pub(crate) async fn ws_handler(
     // cf "impl<S> FromRequestParts<S> for Claims"
     // Decode the token here, similar to how you would in your FromRequestParts implementation
     // This is just a placeholder, replace it with your actual decoding logic
-    let _token_data = decode::<Claims>(&query_token.token, &KEYS.decoding, &Validation::default())
+    let token_data = decode::<Claims>(&query_token.token, &KEYS.decoding, &Validation::default())
         .map_err(|_jwt_err| AppError::LoginError)?;
 
     // finalize the upgrade process by returning upgrade callback.
@@ -65,20 +65,25 @@ pub(crate) async fn ws_handler(
         .on_failed_upgrade(|error| {
             tracing::error!("ws_handler on_failed_upgrade: error: {error}");
         })
-        .on_upgrade(move |socket| handle_socket(socket, addr, state)))
+        .on_upgrade(move |socket| handle_socket(socket, addr, state, token_data.claims.sub)))
 }
 
-async fn handle_socket(socket: WebSocket, addr: SocketAddr, state: Arc<AppState>) {
+async fn handle_socket(
+    socket: WebSocket,
+    addr: SocketAddr,
+    state: Arc<AppState>,
+    claims_sub: String,
+) {
     tracing::debug!("handle_socket: protocol: {:?}", socket.protocol());
 
     let protocol = socket.protocol().and_then(|value| value.to_str().ok());
 
     if let Some("chat") = protocol {
         tracing::info!("handle_socket: chat");
-        handle_socket_chat(socket, addr, state).await;
+        handle_socket_chat(socket, addr, state, claims_sub).await;
     } else if let Some("geolocation") = protocol {
         tracing::info!("handle_socket: geolocation");
-        handle_socket_geolocation(socket, addr, state).await;
+        handle_socket_geolocation(socket, addr, state, claims_sub).await;
     } else {
         tracing::warn!("handle_socket: unsupported protocol: {:?}", protocol);
         // todo!("handle_socket: unsupported protocol")
@@ -87,33 +92,19 @@ async fn handle_socket(socket: WebSocket, addr: SocketAddr, state: Arc<AppState>
 
 /// `https://github.com/tokio-rs/axum/blob/9ebd105d0410dcb8a4133374c32415b5a6950371/examples/chat/src/main.rs#L72C44-L72C59`
 /// Actual websocket statemachine (one will be spawned per connection)
-async fn handle_socket_chat(socket: WebSocket, _who: SocketAddr, state: Arc<AppState>) {
+async fn handle_socket_chat(
+    socket: WebSocket,
+    _who: SocketAddr,
+    state: Arc<AppState>,
+    claims_sub: String,
+) {
     tracing::debug!("handle_socket: protocol: {:?}", socket.protocol());
 
     // "By splitting, we can send and receive at the same time."
     let (mut sender, mut receiver) = socket.split();
 
-    // Username gets set in the receive loop, if it's valid.
-    let mut username = String::new();
-    // Loop until a text message is found.
-    while let Some(Ok(message)) = receiver.next().await {
-        if let Message::Text(name) = message {
-            // If username that is sent by client is not taken, fill username string.
-            username = name;
-
-            // If not empty we want to quit the loop else we want to quit function.
-            if !username.is_empty() {
-                break;
-            } else {
-                // Only send our client that username is taken.
-                let _ = sender
-                    .send(Message::Text(String::from("Username already taken.")))
-                    .await;
-
-                return;
-            }
-        }
-    }
+    // Username is extracted from Auth header(or query param token in this case)
+    let mut username = claims_sub;
 
     // "We subscribe *before* sending the "joined" message, so that we will also
     // display it to our client."
@@ -161,33 +152,19 @@ async fn handle_socket_chat(socket: WebSocket, _who: SocketAddr, state: Arc<AppS
 }
 
 ///
-async fn handle_socket_geolocation(socket: WebSocket, _who: SocketAddr, state: Arc<AppState>) {
+async fn handle_socket_geolocation(
+    socket: WebSocket,
+    _who: SocketAddr,
+    state: Arc<AppState>,
+    claims_sub: String,
+) {
     tracing::debug!("handle_socket: protocol: {:?}", socket.protocol());
 
     // "By splitting, we can send and receive at the same time."
     let (mut sender, mut receiver) = socket.split();
 
-    // Username gets set in the receive loop, if it's valid.
-    let mut username = String::new();
-    // Loop until a text message is found.
-    while let Some(Ok(message)) = receiver.next().await {
-        if let Message::Text(name) = message {
-            // If username that is sent by client is not taken, fill username string.
-            username = name;
-
-            // If not empty we want to quit the loop else we want to quit function.
-            if !username.is_empty() {
-                break;
-            } else {
-                // Only send our client that username is taken.
-                let _ = sender
-                    .send(Message::Text(String::from("Username already taken.")))
-                    .await;
-
-                return;
-            }
-        }
-    }
+    // Username is extracted from Auth header(or query param token in this case)
+    let mut username = claims_sub;
 
     // "We subscribe *before* sending the "joined" message, so that we will also
     // display it to our client."
