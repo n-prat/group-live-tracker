@@ -89,6 +89,7 @@ mod tests {
         multipart::{MultipartForm, Part},
         TestServer,
     };
+    use serde_json::Value;
 
     use crate::new_state;
 
@@ -137,5 +138,12 @@ mod tests {
         assert_eq!(response_body, "");
         let geojson_str: String = app_state.geojson.lock().unwrap().as_ref().unwrap().clone();
         assert_eq!(geojson_str.len(), 15830);
+        // we use this reference file in the frontend tests
+        let geojson_res: Value = serde_json::from_str(&geojson_str).unwrap();
+        let geojson_ref: Value = serde_json::from_str(include_str!(
+            "../tests/data/2024-02-19_1444960792_MJ 19_02.geojson"
+        ))
+        .unwrap();
+        assert_eq!(geojson_res, geojson_ref);
     }
 }

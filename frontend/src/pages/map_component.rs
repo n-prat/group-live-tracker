@@ -1,9 +1,11 @@
 /// `https://github.com/slowtec/leaflet-rs/blob/master/examples/yew-component/src/components/map_component.rs`
 use gloo_utils::document;
-use leaflet::{Circle, LatLng, Map, MapOptions, TileLayer};
+use js_sys::Array;
+use leaflet::{Circle, GeoJson, LatLng, Map, MapOptions, Polyline, PolylineOptions, TileLayer};
 use leaflet::{Tooltip, TooltipOptions};
+use serde_json::Value;
 use wasm_bindgen::{JsCast, JsValue};
-use web_sys::{Element, HtmlElement, Node};
+use web_sys::{console, Element, HtmlElement, Node};
 use yew::prelude::*;
 use yewdux::use_store;
 
@@ -39,6 +41,8 @@ pub(crate) fn map_component() -> Html {
         add_circle_with_options(&leaflet_map, *lat, *lng, username);
     }
 
+    add_geojson_trace(&leaflet_map);
+
     html! {
         // <div id="map" class="map-container component-container">
         //     {render_map(&container)}
@@ -70,6 +74,61 @@ fn add_circle_with_options(map: &Map, lat: f64, lng: f64, username: &str) {
     circle.bind_tooltip(&tooltip);
     // circle.bind_tooltip(&Tooltip::new(&TooltipOptions::new(), map.lag));
     circle.add_to(map);
+}
+
+/// Add a .gpx (GeoJSON) track on the map
+fn add_geojson_trace(map: &Map) {
+    use gloo_utils::window;
+
+    // Parse the GeoJSON string into a serde_json::Value
+    let geojson_string: Value = serde_json::from_str(include_str!(
+        "../../../server/tests/data/2024-02-19_1444960792_MJ 19_02.geojson"
+    ))
+    .unwrap();
+
+    let lines = &geojson_string["geometries"][0]["coordinates"][0];
+    console::log_1(&format!("MapComponent: add_geojson_trace: lines: {}", lines,).into());
+
+    let latlngs = lines
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|line| {
+            let arr = line.as_array().unwrap();
+            let lng = arr[0].as_f64().expect("arr[0].as_f64");
+            let lat = arr[1].as_f64().expect("arr[1].as_f64");
+            let lat_lng = LatLng::new(lat, lng);
+            lat_lng
+        })
+        .collect::<Array>();
+    console::log_1(&format!("MapComponent: add_geojson_trace: latlngs: {:?}", latlngs,).into());
+
+    let options = PolylineOptions::default();
+    Polyline::new_with_options(
+        &latlngs.iter().map(JsValue::from).collect::<Array>(),
+        &options,
+    )
+    .add_to(map);
+
+    // // Create a GeoJson layer from the parsed GeoJSON value
+    // let geojson_value = JsValue::from_str(&geojson_string);
+    // // let geojson_layer = GeoJson::geo_json(&geojson_value);
+
+    // let geo = GeoJson::add_data(&geojson_value);
+
+    // // Parse the GeoJSON string into a JavaScript object
+    // let window = window();
+    // let geojson_value = JsValue::from_str(&geojson_string);
+    // let geojson_object = window
+    //     .eval("JSON.parse")
+    //     .call1(&JsValue::NULL, &geojson_value)
+    //     .unwrap();
+
+    // Create a GeoJson layer from the parsed GeoJSON object
+    // let geojson_layer = GeoJSON::new(&geojson_value);
+
+    // Add the GeoJson layer to the map
+    // map.add_layer(geojson_layer);
 }
 
 fn render_map(container: &HtmlElement) -> Html {
