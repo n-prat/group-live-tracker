@@ -24,6 +24,7 @@ pub(crate) enum AppError {
     // The request body contained invalid JSON
     JsonRejection(JsonRejection),
     LoginError,
+    BadRequest,
 }
 
 // Tell axum how `AppError` should be converted into a response.
@@ -44,6 +45,7 @@ impl IntoResponse for AppError {
             }
             //
             AppError::LoginError => (StatusCode::BAD_REQUEST, "login error".to_owned()),
+            AppError::BadRequest => (StatusCode::BAD_REQUEST, "bad request".to_owned()),
             // AppError::TimeError(err) => {
             //     // Because `TraceLayer` wraps each request in a span that contains the request
             //     // method, uri, etc we don't need to include those details here

@@ -1,11 +1,10 @@
 /// `https://github.com/slowtec/leaflet-rs/blob/master/examples/yew-component/src/components/map_component.rs`
 use gloo_utils::document;
-use leaflet::{Circle, CircleMarker, LatLng, Map, MapOptions, PathOptions, TileLayer};
+use leaflet::{Circle, LatLng, Map, MapOptions, TileLayer};
 use leaflet::{Tooltip, TooltipOptions};
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{Element, HtmlElement, Node};
 use yew::prelude::*;
-use yew::Properties;
 use yewdux::use_store;
 
 use crate::store::Store;

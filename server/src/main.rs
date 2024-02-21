@@ -17,16 +17,16 @@ use std::sync::Mutex;
 
 use auth_jwt::Claims;
 use axum::routing::post;
+use axum::Extension;
 use axum::{response::IntoResponse, routing::get, Router};
 use clap::Parser;
 use tokio::sync::broadcast;
-use tower_http::cors::Any;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
-mod api_auth;
 mod auth_jwt;
 mod errors_and_responses;
+mod route_gpx;
 mod user;
 mod ws_handler;
 
@@ -62,6 +62,25 @@ struct AppState {
     chat_broadcast_sender: broadcast::Sender<String>,
     /// Channel used to send locations to all connected clients.
     location_broadcast_sender: broadcast::Sender<String>,
+    /// GeoJSON result of https://github.com/georust/geozero/blob/52a4d2d3c11f02e734274fcb6ee4b88b94b5b53d/geozero/src/geojson/mod.rs#L34
+    /// so this is a String
+    geojson: Mutex<Option<String>>,
+}
+
+pub(crate) fn new_state() -> Arc<AppState> {
+    // Set up application state for use with with_state().
+    let users_set = Mutex::new(HashSet::new());
+    let (chat_tx, _rx) = broadcast::channel(100);
+    let (location_tx, _rx) = broadcast::channel(100);
+
+    let app_state = Arc::new(AppState {
+        users_set,
+        chat_broadcast_sender: chat_tx,
+        location_broadcast_sender: location_tx,
+        geojson: Mutex::new(None),
+    });
+
+    app_state
 }
 
 #[tokio::main]
@@ -83,16 +102,7 @@ async fn main() -> Result<(), std::io::Error> {
     let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
     let static_files_service = ServeDir::new(assets_dir).append_index_html_on_directories(true);
 
-    // Set up application state for use with with_state().
-    let users_set = Mutex::new(HashSet::new());
-    let (chat_tx, _rx) = broadcast::channel(100);
-    let (location_tx, _rx) = broadcast::channel(100);
-
-    let app_state = Arc::new(AppState {
-        users_set,
-        chat_broadcast_sender: chat_tx,
-        location_broadcast_sender: location_tx,
-    });
+    let app_state = new_state();
 
     // let origins = [
     //     "https://localhost:8080".parse().unwrap(),
@@ -105,6 +115,15 @@ async fn main() -> Result<(), std::io::Error> {
 
     let app = Router::new()
         .route("/api/hello", get(hello))
+        .route(
+            "/api/gpx",
+            // cf https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/axum/src/lib.rs#L266
+            // post({
+            //     let app_state = Arc::clone(&app_state);
+            //     move |body, claims| route_gpx::handle_gpx_upload(app_state, claims, body)
+            // }),
+            post(route_gpx::handle_gpx_upload),
+        )
         .route("/ws", get(ws_handler))
         // .route(
         //     "/api/auth/login",
@@ -124,6 +143,7 @@ async fn main() -> Result<(), std::io::Error> {
         )
         .fallback_service(static_files_service)
         .layer(cors_layer)
+        .layer(Extension(app_state.clone()))
         .with_state(app_state);
 
     // let sock_addr = SocketAddr::from((

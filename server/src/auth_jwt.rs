@@ -204,3 +204,21 @@ pub(crate) enum AuthError {
     TokenCreation,
     InvalidToken,
 }
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use super::*;
+
+    pub(crate) fn generate_token(email: &str) -> String {
+        let claims = Claims {
+            sub: email.to_owned(),
+            company: "ACME".to_owned(),
+            // Mandatory expiry time as UTC timestamp
+            exp: 2000000000, // May 2033
+        };
+        // Create the authorization token
+        let token = encode(&Header::default(), &claims, &KEYS.encoding).unwrap();
+
+        token
+    }
+}

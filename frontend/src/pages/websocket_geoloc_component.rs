@@ -19,7 +19,7 @@ pub(crate) fn websocket_geolocation_component() -> Html {
     let (store, _dispatch) = use_store::<PersistentStore>();
     let token = store.token.clone().unwrap_or_default();
 
-    let (store, dispatch) = use_store::<Store>();
+    let (_store, dispatch) = use_store::<Store>();
 
     // Create a state for the geolocation status
     let geolocation_state = use_state(|| None);
