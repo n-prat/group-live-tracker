@@ -9,14 +9,17 @@ use yew::prelude::*;
 use yew_hooks::prelude::*;
 use yewdux::use_store;
 
-use crate::{app::WS_ROOT, store::PersistentStore};
+use crate::{
+    app::WS_ROOT,
+    store::{PersistentStore, Store},
+};
 
 #[function_component(WebSocketGeoLocComponent)]
 pub(crate) fn websocket_geolocation_component() -> Html {
-    let history = use_list(vec![]);
-
     let (store, _dispatch) = use_store::<PersistentStore>();
     let token = store.token.clone().unwrap_or_default();
+
+    let (store, dispatch) = use_store::<Store>();
 
     // Create a state for the geolocation status
     let geolocation_state = use_state(|| None);
@@ -43,10 +46,36 @@ pub(crate) fn websocket_geolocation_component() -> Html {
             UseWebSocketOptions {
                 // Receive message by callback `onmessage`.
                 onmessage: Some(Box::new(move |message| {
-                    history.push(format!("[recv]: {}", message));
-                    console::log_1(
-                        &format!("WebSocketGeoLocComponent: [recv]: {}", message).into(),
-                    );
+                    // Parse the message eg: "aaaaaaaaaaaaa: 48.8354,2.3203"
+                    let username_and_lat_lng_str = message.split(": ").collect::<Vec<_>>();
+                    // NOTE: can only be "aaaaaaa joined" message, in which case we do nothing
+                    if username_and_lat_lng_str.len() == 2 {
+                        let lat_lng_str = username_and_lat_lng_str.last().unwrap();
+                        let username = *username_and_lat_lng_str.first().unwrap();
+                        // we SHOULD have eg "48.8354,2.3203"
+                        let lat_lng_str = lat_lng_str.split(',').collect::<Vec<_>>();
+                        // let lat_str = lat_lng_str.first().unwrap();
+                        let (lat_str, lng_str) = (lat_lng_str[0], lat_lng_str[1]);
+                        let lat: f64 = lat_str.parse().unwrap();
+                        let lng: f64 = lng_str.parse().unwrap();
+                        console::log_1(
+                            &format!(
+                                "WebSocketGeoLocComponent: [recv]: username: {} at ({},{})",
+                                username, lat_str, lng_str
+                            )
+                            .into(),
+                        );
+
+                        // update the location for this user
+                        // it will be used in frontend/src/pages/map_component.rs
+                        dispatch.reduce_mut(|store| {
+                            store.locations.insert(username.to_string(), (lat, lng));
+                        });
+                    } else {
+                        console::log_1(
+                            &format!("WebSocketGeoLocComponent: [recv]: {}", message).into(),
+                        );
+                    }
                 })),
                 manual: Some(false),
                 protocols: Some(vec!["geolocation".to_string()]),

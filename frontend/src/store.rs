@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 /// https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/store.rs
 ///
 use serde::{Deserialize, Serialize};
@@ -15,6 +17,7 @@ pub struct AlertInput {
 pub struct Store {
     pub page_loading: bool,
     pub alert_input: AlertInput,
+    pub locations: HashMap<String, (f64, f64)>,
 }
 
 /// We split the "Store" in two: a part that is in memory only; and this: that is persisted with local storage (cookies)

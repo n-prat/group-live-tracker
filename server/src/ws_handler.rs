@@ -104,7 +104,7 @@ async fn handle_socket_chat(
     let (mut sender, mut receiver) = socket.split();
 
     // Username is extracted from Auth header(or query param token in this case)
-    let mut username = claims_sub;
+    let username = claims_sub;
 
     // "We subscribe *before* sending the "joined" message, so that we will also
     // display it to our client."
@@ -164,7 +164,7 @@ async fn handle_socket_geolocation(
     let (mut sender, mut receiver) = socket.split();
 
     // Username is extracted from Auth header(or query param token in this case)
-    let mut username = claims_sub;
+    let username = claims_sub;
 
     // "We subscribe *before* sending the "joined" message, so that we will also
     // display it to our client."

@@ -3,7 +3,7 @@ use yewdux::prelude::*;
 
 use crate::components::header::Header;
 use crate::pages::login_page::LoginPage;
-use crate::pages::map_component::{MapComponent, PARIS_LAT, PARIS_LNG};
+use crate::pages::map_component::MapComponent;
 use crate::pages::websocket_chat_component::WebSocketChatComponent;
 use crate::pages::websocket_geoloc_component::WebSocketGeoLocComponent;
 use crate::store::PersistentStore;
@@ -48,7 +48,7 @@ pub(crate) fn home_page() -> Html {
 
         <div class="flex flex-row flex-grow">
             <div class="basis-3/4 bg-gray-200 p-4">
-                <MapComponent markers={vec![(PARIS_LAT, PARIS_LNG)]}/>
+                <MapComponent />
             </div>
 
             <div class="basis-1/4 bg-gray-200 p-4">
