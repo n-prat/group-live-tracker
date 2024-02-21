@@ -2,7 +2,6 @@ use yew::prelude::*;
 use yewdux::prelude::*;
 
 use crate::components::header::Header;
-use crate::pages::geo_loc_component::GeoLocComponent;
 use crate::pages::login_page::LoginPage;
 use crate::pages::map_component::{MapComponent, PARIS_LAT, PARIS_LNG};
 use crate::pages::websocket_chat_component::WebSocketChatComponent;
@@ -56,7 +55,6 @@ pub(crate) fn home_page() -> Html {
                 <WebSocketChatComponent />
             </div>
 
-            <GeoLocComponent />
             <WebSocketGeoLocComponent />
         </div>
 

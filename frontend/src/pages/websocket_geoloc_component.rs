@@ -1,3 +1,4 @@
+use leaflet::LatLng;
 use web_sys::console;
 /// `https://chat.openai.com`
 /// See also https://github.com/jetli/yew-hooks/blob/e31debde4ce3c8c524c56303255baa833a0f0b79/crates/yew-hooks/src/hooks/use_websocket.rs#L163
@@ -16,6 +17,19 @@ pub(crate) fn websocket_geolocation_component() -> Html {
 
     let (store, _dispatch) = use_store::<PersistentStore>();
     let token = store.token.clone().unwrap_or_default();
+
+    // Create a state for the geolocation status
+    let geolocation_state = use_state(|| None);
+
+    // Use the geolocation hook
+    // Options for retrieving geolocation position
+    let mut position_options = web_sys::PositionOptions::new();
+    position_options.enable_high_accuracy(true);
+    position_options.timeout(10_000); // Timeout in milliseconds
+    let geolocation = use_geolocation_with_options(position_options);
+
+    // Clone the state handle to move it into the closure
+    let geolocation_state_clone = geolocation_state.clone();
 
     // TODO?
     // if auth_user.is_none() {
@@ -40,6 +54,7 @@ pub(crate) fn websocket_geolocation_component() -> Html {
             },
         )
     };
+
     // let onclick = {
     //     let ws = ws.clone();
     //     // let history = history.clone();
@@ -55,6 +70,27 @@ pub(crate) fn websocket_geolocation_component() -> Html {
     //         ws.open();
     //     })
     // };
+
+    // Use the effect hook to perform side effects when the geolocation state changes
+    use_effect_with((geolocation.clone(),), move |(geolocation,)| {
+        // Perform side effects when the position changes
+        geolocation_state_clone.set(Some(LatLng::new(
+            geolocation.latitude,
+            geolocation.longitude,
+        )));
+        console::log_1(
+            &format!(
+                "websocket_geolocation_component: {} {}",
+                geolocation.latitude, geolocation.longitude
+            )
+            .into(),
+        );
+
+        let message = format!("{},{}", geolocation.latitude, geolocation.longitude);
+        ws.send(message.clone());
+        // Return an effect cleanup function if needed
+        || {}
+    });
 
     html! {
         <>
