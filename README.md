@@ -9,6 +9,10 @@ Credits: https://chat.openai.com
 Based on https://github.com/codec-abc/Yew-WebRTC-Chat
 Based on https://github.com/rksm/axum-yew-setup/
 
+## Deployment
+
+https://n-prat.github.io/group-live-tracker/
+
 ## TODO
 
 - display the history of a SPECIFIC user instead the whole .gpx track

@@ -11,8 +11,8 @@ use crate::components::{
 use crate::router::{switch, Route};
 use crate::store::Store;
 
-pub(crate) const WS_ROOT: &str = "ws://localhost:8081/ws";
-pub(crate) const API_ROOT: &str = "http://localhost:8081";
+pub(crate) const WS_ROOT: &str = "wss://localhost:8081/ws";
+pub(crate) const API_ROOT: &str = "https://localhost:8081";
 
 #[function_component(App)]
 pub fn app() -> Html {
