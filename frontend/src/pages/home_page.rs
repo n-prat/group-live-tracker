@@ -47,7 +47,7 @@ pub(crate) fn home_page() -> Html {
         </header>
 
         <div class="flex flex-row flex-grow">
-            <div class="basis-3/4 bg-gray-200 p-4">
+            <div id="map-container" class="basis-3/4 bg-gray-200 p-4">
                 <MapComponent />
             </div>
 

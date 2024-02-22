@@ -5,7 +5,7 @@ use leaflet::{Circle, LatLng, Map, MapOptions, Polyline, PolylineOptions, TileLa
 use leaflet::{Tooltip, TooltipOptions};
 use serde_json::Value;
 use wasm_bindgen::{JsCast, JsValue};
-use web_sys::{console, Element, HtmlElement, Node};
+use web_sys::{console, HtmlElement, Node};
 use yew::prelude::*;
 use yewdux::use_store;
 
@@ -16,33 +16,75 @@ const PARIS_LNG: f64 = 2.333_333;
 
 #[function_component(MapComponent)]
 pub(crate) fn map_component() -> Html {
-    let container: Element = document().create_element("div").unwrap();
-    let container: HtmlElement = container.dyn_into().unwrap();
-    container.set_class_name("map h-full");
-    let leaflet_map = Map::new_with_element(&container, &MapOptions::default());
-
-    leaflet_map.set_view(&LatLng::new(PARIS_LAT, PARIS_LNG), 11.0);
-    add_tile_layer(&leaflet_map);
-
     let (store, _dispatch) = use_store::<Store>();
+    let leaflet_map_state = use_state(|| None);
 
-    // let circle_marker = CircleMarker::new(&LatLng::new(
-    //     props.markers[0].0 + 0.1,
-    //     props.markers[0].1 + 0.1,
-    // ));
-    // // Set the radius of the circle marker
-    // circle_marker.set_radius(100.0);
-    // circle_marker.set_style(&PathOptions::default());
-    // // .set("#3388ff") // Set the color of the circle marker
-    // // .fill_opacity(0.5); // Set the opacity of the fill
-    // leaflet_map.add_layer(&circle_marker);
+    // "Provide a empty tuple `()` as dependencies when you need to do something only on the first render of a component."
+    // let container_clone = container.clone();
+    let leaflet_map_state_clone = leaflet_map_state.clone();
+    use_effect_with((), move |_| {
+        // let container: Element = document().create_element("div").unwrap();
+        // let container: HtmlElement = container.dyn_into().unwrap();
+        // container.set_class_name("map h-full");
+        // container.set_id("map-container");
 
-    for (username, (lat, lng)) in &store.locations {
-        add_circle_with_options(&leaflet_map, *lat, *lng, username);
+        let container: HtmlElement = document()
+            .get_element_by_id("map-container")
+            .unwrap()
+            .dyn_into()
+            .unwrap();
+
+        // let leaflet_map = Map::new("map-container", &MapOptions::default());
+        let leaflet_map = Map::new_with_element(&container, &MapOptions::default());
+
+        leaflet_map.set_view(&LatLng::new(PARIS_LAT, PARIS_LNG), 11.0);
+        add_tile_layer(&leaflet_map);
+
+        add_geojson_trace(&leaflet_map);
+
+        leaflet_map_state_clone.set(Some(leaflet_map));
+    });
+
+    // NOT the the first render: retrieve the existing map from the document
+    // FAIL: get_element_by_id works but no way to cast it into "Map"???
+    // match document().get_element_by_id("map-container") {
+    //     Some(container) => {
+    //         let container_clone = container.clone();
+    //         match container.dyn_into::<Map>() {
+    //             Ok(leaflet_map) => {
+    //                 // For example, update the circles on the map
+    //                 for (username, (lat, lng)) in &store.locations {
+    //                     add_circle_with_options(&leaflet_map, *lat, *lng, username);
+    //                 }
+    //             }
+    //             Err(err) => {
+    //                 console::log_1(&"MapComponent: map-container can not be cast to Map".into());
+    //                 console::log_1(&container_clone);
+    //             }
+    //         }
+    //     }
+    //     None => {
+    //         console::log_1(&"MapComponent: map-container not found".into());
+    //     }
+    // }
+    //
+    // So use a State instead
+    match leaflet_map_state.as_ref() {
+        Some(leaflet_map) => {
+            console::log_1(&"MapComponent: leaflet_map_state ready".into());
+
+            // For example, update the circles on the map
+            for (username, (lat, lng)) in &store.locations {
+                add_circle_with_options(leaflet_map, *lat, *lng, username);
+            }
+        }
+        None => {
+            console::log_1(&"MapComponent: leaflet_map_state NOT ready".into());
+        }
     }
 
-    add_geojson_trace(&leaflet_map);
-
+    // NOTE??? apparently no need to do anything
+    // and DO NOT try: we WANT the map to stay and NOT refresh; we only want markers to be added inside the Map!
     html! {
         // <div id="map" class="map-container component-container">
         //     {render_map(&container)}
@@ -50,17 +92,24 @@ pub(crate) fn map_component() -> Html {
 
         // <section class="bg-ct-blue-600 min-h-screen pt-20">
         //  max-w-4xl mx-auto bg-ct-dark-100 rounded-md h-[20rem] flex justify-center items-center
-            <div class="h-full">
+            // <div class="h-full">
                 // <div id="map">
-                    {render_map(&container)}
+                    // {render_map(&container)}
                 // </div>
-            </div>
+            // </div>
         // </section>
     }
 }
 
 /// https://github.com/slowtec/leaflet-rs/blob/09d02e74bc30d519a5a30bb130516aa161f0415a/examples/basic/src/lib.rs#L76
 fn add_circle_with_options(map: &Map, lat: f64, lng: f64, username: &str) {
+    console::log_1(
+        &format!(
+            "MapComponent: add_circle_with_options username: {}",
+            username
+        )
+        .into(),
+    );
     let lat_lng = LatLng::new(lat, lng);
 
     let options = leaflet::CircleOptions::default();
@@ -129,10 +178,10 @@ fn add_geojson_trace(map: &Map) {
     // map.add_layer(geojson_layer);
 }
 
-fn render_map(container: &HtmlElement) -> Html {
-    let node: &Node = &container.clone().into();
-    Html::VRef(node.clone())
-}
+// fn render_map(container: &HtmlElement) -> Html {
+//     let node: &Node = &container.clone().into();
+//     Html::VRef(node.clone())
+// }
 
 fn add_tile_layer(map: &Map) {
     TileLayer::new("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").add_to(map);
