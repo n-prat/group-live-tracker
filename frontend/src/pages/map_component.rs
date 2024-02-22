@@ -1,3 +1,7 @@
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
+
 /// `https://github.com/slowtec/leaflet-rs/blob/master/examples/yew-component/src/components/map_component.rs`
 use gloo_utils::document;
 use js_sys::Array;
@@ -5,7 +9,7 @@ use leaflet::{Circle, LatLng, Map, MapOptions, Polyline, PolylineOptions, TileLa
 use leaflet::{Tooltip, TooltipOptions};
 use serde_json::Value;
 use wasm_bindgen::{JsCast, JsValue};
-use web_sys::{console, HtmlElement, Node};
+use web_sys::{console, HtmlElement};
 use yew::prelude::*;
 use yewdux::use_store;
 
@@ -14,10 +18,36 @@ use crate::store::Store;
 const PARIS_LAT: f64 = 48.866_667;
 const PARIS_LNG: f64 = 2.333_333;
 
+/// We MUST NOT modify both the Store and the State in MapComponent because that would trigger massive redraws!
+/// So to avoid this we add a custom struct and use `use_state_eq` with our custom `PartialEq` implementation
+#[derive(Clone)]
+struct MyCircleWrapper {
+    tag: String,
+    circle: Circle,
+}
+
+impl PartialEq for MyCircleWrapper {
+    /// we only compare the "tag"; that way we WILL NOT rerender when only the lat/lng of the circle changes
+    fn eq(&self, other: &Self) -> bool {
+        self.tag == other.tag
+    }
+}
+
 #[function_component(MapComponent)]
 pub(crate) fn map_component() -> Html {
     let (store, _dispatch) = use_store::<Store>();
     let leaflet_map_state = use_state(|| None);
+    // let mut map_location_markers: UseStateHandle<HashMap<String, Circle>> =
+    //     use_state(|| HashMap::new());
+    // let mut map_location_markers: UseMapHandle<String, Circle> = use_map(HashMap::new());
+    //
+    // FAIL: MUST be some kind of state; else we will keep adding markers to the map b/c the map is "global"
+    // let mut map_location_markers: HashMap<String, Circle> = HashMap::new();
+    //      "This hook is used for obtaining a mutable reference to a stateful value. Its state persists across renders.
+    //      It is important to note that you do not get notified of state changes.
+    //      If you need the component to be re-rendered on state change, consider using use_state."
+    let map_location_markers: Rc<RefCell<HashMap<String, MyCircleWrapper>>> =
+        use_mut_ref(|| HashMap::new());
 
     // "Provide a empty tuple `()` as dependencies when you need to do something only on the first render of a component."
     // let container_clone = container.clone();
@@ -75,7 +105,43 @@ pub(crate) fn map_component() -> Html {
 
             // For example, update the circles on the map
             for (username, (lat, lng)) in &store.locations {
-                add_circle_with_options(leaflet_map, *lat, *lng, username);
+                // if there is an entry matching username; update it
+                // else insert a new circle in the map
+                // That returns what we could call "should_insert_new_circle"
+                let mut map_location_markers_borrow = map_location_markers.borrow_mut();
+                let circle_wrapper: Option<MyCircleWrapper> = match map_location_markers_borrow
+                    .get_mut(username)
+                {
+                    Some(circle_wrapper) => {
+                        // update the existing circle
+                        console::log_1(
+                            &"MapComponent: leaflet_map_state update the existing circle".into(),
+                        );
+                        circle_wrapper.circle.set_lat_lng(&LatLng::new(*lat, *lng));
+                        None
+                    }
+                    None => {
+                        // create a new circle
+                        console::log_1(
+                            &"MapComponent: leaflet_map_state create a new circle".into(),
+                        );
+                        let circle = new_circle_with_options(*lat, *lng, username);
+                        Some(MyCircleWrapper {
+                            tag: username.to_string(),
+                            circle,
+                        })
+                    }
+                };
+
+                if let Some(circle_wrapper) = &circle_wrapper {
+                    console::log_1(&"MapComponent: leaflet_map_state insert!".into());
+                    // Borrow the RefCell mutably to get mutable access to the HashMap
+                    map_location_markers_borrow
+                        .insert(username.to_string(), circle_wrapper.clone());
+                    circle_wrapper.circle.add_to(leaflet_map);
+                } else {
+                    console::log_1(&"MapComponent: leaflet_map_state NOT inserting!".into());
+                }
             }
         }
         None => {
@@ -102,7 +168,8 @@ pub(crate) fn map_component() -> Html {
 }
 
 /// https://github.com/slowtec/leaflet-rs/blob/09d02e74bc30d519a5a30bb130516aa161f0415a/examples/basic/src/lib.rs#L76
-fn add_circle_with_options(map: &Map, lat: f64, lng: f64, username: &str) {
+/// Does NOT add it to the map; you SHOULD call eg `circle.add_to(leaflet_map)` afterward
+fn new_circle_with_options(lat: f64, lng: f64, username: &str) -> Circle {
     console::log_1(
         &format!(
             "MapComponent: add_circle_with_options username: {}",
@@ -122,7 +189,8 @@ fn add_circle_with_options(map: &Map, lat: f64, lng: f64, username: &str) {
     tooltip.set_content(&JsValue::from_str(username));
     circle.bind_tooltip(&tooltip);
     // circle.bind_tooltip(&Tooltip::new(&TooltipOptions::new(), map.lag));
-    circle.add_to(map);
+
+    circle
 }
 
 /// Add a .gpx (GeoJSON) track on the map
@@ -134,7 +202,7 @@ fn add_geojson_trace(map: &Map) {
     .unwrap();
 
     let lines = &geojson_string["geometries"][0]["coordinates"][0];
-    console::log_1(&format!("MapComponent: add_geojson_trace: lines: {}", lines,).into());
+    // console::log_1(&format!("MapComponent: add_geojson_trace: lines: {}", lines,).into());
 
     let latlngs = lines
         .as_array()
@@ -148,7 +216,7 @@ fn add_geojson_trace(map: &Map) {
             lat_lng
         })
         .collect::<Array>();
-    console::log_1(&format!("MapComponent: add_geojson_trace: latlngs: {:?}", latlngs,).into());
+    // console::log_1(&format!("MapComponent: add_geojson_trace: latlngs: {:?}", latlngs,).into());
 
     let options = PolylineOptions::default();
     Polyline::new_with_options(
