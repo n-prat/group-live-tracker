@@ -11,4 +11,9 @@ mime_types = [
 ]
 
 [build]
-output = "dist"
+# WARNING these do nothing ??? so set in prod.sh instead
+#
+# MUST match eg https://n-prat.github.io/group-live-tracker/
+# public_url = "/group-live-tracker/"
+# public_url = "https://n-prat.github.io/group-live-tracker/"
+# public_url = "."

@@ -5,3 +5,6 @@
 /*.crt
 /*.cert
 /*.key
+
+# prod
+/docs
