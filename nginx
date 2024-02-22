@@ -1,0 +1,94 @@
+server {
+	listen 80;
+	listen [::]:80;
+	listen 443 ssl http2;
+        listen [::]:443 ssl http2;
+
+	root /home/nathan/group-live-tracker/group-live-tracker-master;
+
+	server_name tracker.nathanprat.fr;
+
+	index index.php index.html index.htm index.nginx-debian.html;
+
+	location / {
+		# https://enable-cors.org/server_nginx.html
+		# NOTES:
+		# Firefox: Cross-Origin Request Blocked: The Same Origin Policy disallows reading the remote resource at ‘https://tracker.nathanprat.fr/authorize’. (Reason: Credential is not supported if the CORS header ‘Access-Control-Allow-Origin’ is ‘*’)
+		# Edge: Access to fetch at 'https://tracker.nathanprat.fr/authorize' from origin 'https://n-prat.github.io' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: The value of the 'Access-Control-Allow-Origin' header in the response must not be the wildcard '*' when the request's credentials mode is 'include'.
+		if ($request_method = 'OPTIONS') {
+			add_header 'Access-Control-Allow-Origin' 'https://n-prat.github.io';
+			add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
+			# CUSTOM(nprak) add_header 'Access-Control-Allow-Credentials' 'true';
+			# NO NO NO! this breaks JS fetch etc!
+			add_header 'Access-Control-Allow-Credentials' 'true';
+			#
+			# Custom headers and headers various browsers *should* be OK with but aren't
+			#
+			add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range';
+			#
+			# Tell client that this pre-flight info is valid for 20 days
+			#
+			add_header 'Access-Control-Max-Age' 1728000;
+			add_header 'Content-Type' 'text/plain; charset=utf-8';
+			add_header 'Content-Length' 0;
+			return 204;
+		}
+		if ($request_method = 'POST') {
+			add_header 'Access-Control-Allow-Origin' 'https://n-prat.github.io' always;
+			add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+			add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range' always;
+			add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
+			# CUSTOM(nprak) add_header 'Access-Control-Allow-Credentials' 'true';
+			# NO NO NO! this breaks JS fetch etc!
+			# add_header 'Access-Control-Allow-Credentials' 'true';
+		}
+		if ($request_method = 'GET') {
+			add_header 'Access-Control-Allow-Origin' 'https://n-prat.github.io' always;
+			add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+			add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range' always;
+			add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range' always;
+			# CUSTOM(nprak) add_header 'Access-Control-Allow-Credentials' 'true';
+			# NO NO NO! this breaks JS fetch etc!
+			# add_header 'Access-Control-Allow-Credentials' 'true';
+		}
+
+		proxy_set_header   Host               127.0.0.1:8080;
+		proxy_set_header   X-Forwarded-Host   $http_host;
+    		proxy_set_header   X-Forwarded-For    $remote_addr;
+
+        # for Websockets
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+		proxy_pass http://127.0.0.1:7979;
+
+        # https://stackoverflow.com/questions/4939382/logging-post-data-from-request-body
+        # MUST add to nginx.conf:
+        # log_format postdata escape=json '$remote_addr - $remote_user [$time_local] '
+        #                '"$request" $status $bytes_sent '
+        #                '"$http_referer" "$http_user_agent" "$request_body"';
+		access_log  /var/log/nginx/postdata.log  postdata;
+	}
+
+    ssl_certificate /etc/letsencrypt/live/torrent.nathanprat.fr/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/torrent.nathanprat.fr/privkey.pem; # managed by Certbot
+ssl_session_cache shared:le_nginx_SSL:1m; # managed by Certbot
+ssl_session_timeout 1440m; # managed by Certbot
+
+ssl_protocols TLSv1 TLSv1.1 TLSv1.2; # managed by Certbot
+ssl_prefer_server_ciphers on; # managed by Certbot
+
+ssl_ciphers "ECDHE-ECDSA-AES128-GCM-SHA256 ECDHE-ECDSA-AES256-GCM-SHA384 ECDHE-ECDSA-AES128-SHA ECDHE-ECDSA-AES256-SHA ECDHE-ECDSA-AES128-SHA256 ECDHE-ECDSA-AES256-SHA384 ECDHE-RSA-AES128-GCM-SHA256 ECDHE-RSA-AES256-GCM-SHA384 ECDHE-RSA-AES128-SHA ECDHE-RSA-AES128-SHA256 ECDHE-RSA-AES256-SHA384 DHE-RSA-AES128-GCM-SHA256 DHE-RSA-AES256-GCM-SHA384 DHE-RSA-AES128-SHA DHE-RSA-AES256-SHA DHE-RSA-AES128-SHA256 DHE-RSA-AES256-SHA256 EDH-RSA-DES-CBC3-SHA"; # managed by Certbot
+
+
+
+    if ($scheme != "https") {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+
+
+}
+

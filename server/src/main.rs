@@ -84,14 +84,12 @@ async fn main() -> Result<(), std::io::Error> {
 
     let app_state = new_state();
 
-    // let origins = [
-    //     "https://localhost:8080".parse().unwrap(),
-    //     "http://localhost:8081".parse().unwrap(),
-    // ];
-    // let cors_layer = CorsLayer::new()
-    //     .allow_origin(origins)
-    //     .allow_credentials(true);
-    let cors_layer = CorsLayer::very_permissive();
+    #[allow(unused_mut)]
+    let mut cors_layer = CorsLayer::very_permissive();
+    #[cfg(not(debug_assertions))]
+    let origins = ["https://n-prat.github.io/".parse().unwrap()];
+    #[cfg(not(debug_assertions))]
+    let cors_layer = cors_layer.clone().allow_origin(origins);
 
     let tls_config = match (opt.tls_cert_path, opt.tls_key_path) {
         (Some(tls_cert_path), Some(tls_key_path)) => {
