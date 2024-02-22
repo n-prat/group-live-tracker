@@ -3,11 +3,11 @@
 //! and `https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/chat/src/main.rs`
 
 use std::net::SocketAddr;
-use std::sync::Arc;
 
 use axum::{
     extract::ws::{Message, WebSocket, WebSocketUpgrade},
     response::Response,
+    Extension,
 };
 use axum_extra::headers;
 use axum_extra::TypedHeader;
@@ -15,7 +15,6 @@ use axum_extra::TypedHeader;
 use axum::extract::connect_info::ConnectInfo;
 //allows to split the websocket stream into separate TX and RX branches
 use axum::extract::Query;
-use axum::extract::State;
 use futures::SinkExt;
 use futures::StreamExt;
 use jsonwebtoken::{decode, Validation};
@@ -24,7 +23,7 @@ use serde::Deserialize;
 use crate::{
     auth_jwt::{Claims, KEYS},
     errors_and_responses::AppError,
-    AppState,
+    state::SharedState,
 };
 
 #[derive(Debug, Deserialize)]
@@ -41,7 +40,7 @@ pub(crate) async fn ws_handler(
     ws: WebSocketUpgrade,
     user_agent: Option<TypedHeader<headers::UserAgent>>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    State(state): State<Arc<AppState>>,
+    Extension(state): Extension<SharedState>,
     // _claims: Claims, // NO! no easy way to add custom headers in yewhook's websocket to we use a query param "token" instead
     query_token: Query<QueryToken>,
 ) -> Result<Response, AppError> {
@@ -71,7 +70,7 @@ pub(crate) async fn ws_handler(
 async fn handle_socket(
     socket: WebSocket,
     addr: SocketAddr,
-    state: Arc<AppState>,
+    state: SharedState,
     claims_sub: String,
 ) {
     tracing::debug!("handle_socket: protocol: {:?}", socket.protocol());
@@ -95,7 +94,7 @@ async fn handle_socket(
 async fn handle_socket_chat(
     socket: WebSocket,
     _who: SocketAddr,
-    state: Arc<AppState>,
+    state: SharedState,
     claims_sub: String,
 ) {
     tracing::debug!("handle_socket: protocol: {:?}", socket.protocol());
@@ -108,12 +107,12 @@ async fn handle_socket_chat(
 
     // "We subscribe *before* sending the "joined" message, so that we will also
     // display it to our client."
-    let mut rx = state.chat_broadcast_sender.subscribe();
+    let mut rx = state.write().unwrap().chat_broadcast_sender.subscribe();
 
     // Now send the "joined" message to all subscribers.
     let msg = format!("{username} joined.");
     tracing::debug!("{msg}");
-    let _ = state.chat_broadcast_sender.send(msg);
+    let _ = state.write().unwrap().chat_broadcast_sender.send(msg);
 
     // "Spawn the first task that will receive broadcast messages and send text
     // messages over the websocket to our client."
@@ -127,7 +126,7 @@ async fn handle_socket_chat(
     });
 
     // "Clone things we want to pass (move) to the receiving task."
-    let chat_broadcast_sender = state.chat_broadcast_sender.clone();
+    let chat_broadcast_sender = state.write().unwrap().chat_broadcast_sender.clone();
 
     // "Spawn a task that takes messages from the websocket, prepends the user
     // name, and sends them to all broadcast subscribers."
@@ -148,14 +147,14 @@ async fn handle_socket_chat(
     // "Send "user left" message (similar to "joined" above)."
     let msg = format!("{username} left.");
     tracing::debug!("{msg}");
-    let _ = state.chat_broadcast_sender.send(msg);
+    let _ = state.write().unwrap().chat_broadcast_sender.send(msg);
 }
 
 ///
 async fn handle_socket_geolocation(
     socket: WebSocket,
     _who: SocketAddr,
-    state: Arc<AppState>,
+    state: SharedState,
     claims_sub: String,
 ) {
     tracing::debug!("handle_socket: protocol: {:?}", socket.protocol());
@@ -168,12 +167,12 @@ async fn handle_socket_geolocation(
 
     // "We subscribe *before* sending the "joined" message, so that we will also
     // display it to our client."
-    let mut rx = state.location_broadcast_sender.subscribe();
+    let mut rx = state.write().unwrap().location_broadcast_sender.subscribe();
 
     // Now send the "joined" message to all subscribers.
     let msg = format!("{username} joined.");
     tracing::debug!("{msg}");
-    let _ = state.location_broadcast_sender.send(msg);
+    let _ = state.write().unwrap().location_broadcast_sender.send(msg);
 
     // "Spawn the first task that will receive broadcast messages and send text
     // messages over the websocket to our client."
@@ -187,7 +186,7 @@ async fn handle_socket_geolocation(
     });
 
     // "Clone things we want to pass (move) to the receiving task."
-    let location_broadcast_sender = state.location_broadcast_sender.clone();
+    let location_broadcast_sender = state.write().unwrap().location_broadcast_sender.clone();
 
     // "Spawn a task that takes messages from the websocket, prepends the user
     // name, and sends them to all broadcast subscribers."
@@ -208,7 +207,7 @@ async fn handle_socket_geolocation(
     // "Send "user left" message (similar to "joined" above)."
     let msg = format!("{username} left.");
     tracing::debug!("{msg}");
-    let _ = state.location_broadcast_sender.send(msg);
+    let _ = state.write().unwrap().location_broadcast_sender.send(msg);
 }
 
 // /// helper to print contents of messages to stdout. Has special treatment for Close.

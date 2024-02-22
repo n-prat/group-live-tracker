@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use axum::extract::Multipart;
 use axum::Extension;
 use geozero::gpx::GpxReader;
@@ -7,13 +5,12 @@ use geozero::ProcessToJson;
 
 use crate::auth_jwt::Claims;
 use crate::errors_and_responses::AppError;
-use crate::AppState;
+use crate::state::SharedState;
 
 /// see https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/multipart-form/src/main.rs#L64
 #[axum::debug_handler]
 pub(crate) async fn handle_gpx_upload(
-    Extension(state): Extension<Arc<AppState>>,
-    // state: Arc<AppState>,
+    Extension(state): Extension<SharedState>,
     _claims: Claims,
     mut multipart: Multipart,
 ) -> Result<(), AppError> {
@@ -68,8 +65,7 @@ pub(crate) async fn handle_gpx_upload(
         let mut reader = GpxReader(&mut reader);
         let geojson_str = reader.to_json().unwrap();
 
-        let mut geojson = state.geojson.lock().unwrap();
-        *geojson = Some(geojson_str);
+        state.write().unwrap().geojson = Some(geojson_str);
 
         // return Ok(Json(json!({ "status": "success" })));
         return Ok(());

@@ -1,13 +1,11 @@
 /// https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/jwt/src/main.rs#L1
 // TODO use a turnkey JWT crate/lib from https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/ECOSYSTEM.md?plain=1#L13 ?
-use std::sync::Arc;
-
 use axum::{
     async_trait,
     extract::FromRequestParts,
     http::{request::Parts, StatusCode},
     response::{IntoResponse, Response},
-    Json, RequestPartsExt,
+    Extension, Json, RequestPartsExt,
 };
 use axum_extra::{
     headers::{authorization::Bearer, Authorization},
@@ -19,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fmt::Display;
 
-use crate::{user::check_user, AppState};
+use crate::{state::SharedState, user::check_user};
 
 // Quick instructions
 //
@@ -81,8 +79,8 @@ pub(crate) static KEYS: Lazy<Keys> = Lazy::new(|| {
 // }
 
 pub(crate) async fn authorize(
+    Extension(state): Extension<SharedState>,
     Json(payload): Json<LoginRequest>,
-    state: Arc<AppState>,
 ) -> Result<Json<AuthBody>, AuthError> {
     // Check if the user sent the credentials
     // TODO? || payload.password.is_empty()

@@ -1,7 +1,7 @@
 /// `https://github.com/slowtec/leaflet-rs/blob/master/examples/yew-component/src/components/map_component.rs`
 use gloo_utils::document;
 use js_sys::Array;
-use leaflet::{Circle, GeoJson, LatLng, Map, MapOptions, Polyline, PolylineOptions, TileLayer};
+use leaflet::{Circle, LatLng, Map, MapOptions, Polyline, PolylineOptions, TileLayer};
 use leaflet::{Tooltip, TooltipOptions};
 use serde_json::Value;
 use wasm_bindgen::{JsCast, JsValue};
@@ -78,8 +78,6 @@ fn add_circle_with_options(map: &Map, lat: f64, lng: f64, username: &str) {
 
 /// Add a .gpx (GeoJSON) track on the map
 fn add_geojson_trace(map: &Map) {
-    use gloo_utils::window;
-
     // Parse the GeoJSON string into a serde_json::Value
     let geojson_string: Value = serde_json::from_str(include_str!(
         "../../../server/tests/data/2024-02-19_1444960792_MJ 19_02.geojson"
