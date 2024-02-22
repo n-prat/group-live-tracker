@@ -12,6 +12,7 @@ mime_types = [
 
 [build]
 # WARNING these do nothing ??? so set in prod.sh instead
+# public-url: MUST ALSO update "base" in index.html ! Else blank page when deploying on GH pages!
 #
 # MUST match eg https://n-prat.github.io/group-live-tracker/
 # public_url = "/group-live-tracker/"
