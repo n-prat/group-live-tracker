@@ -11,8 +11,15 @@ use crate::components::{
 use crate::router::{switch, Route};
 use crate::store::Store;
 
+// TODO FIXME this is an awful way to handle PROD vs LOCAL dev
+#[cfg(debug_assertions)]
 pub(crate) const WS_ROOT: &str = "wss://localhost:8081/ws";
+#[cfg(debug_assertions)]
 pub(crate) const API_ROOT: &str = "https://localhost:8081";
+#[cfg(not(debug_assertions))]
+pub(crate) const WS_ROOT: &str = "wss://tracker.nathanprat.fr/ws";
+#[cfg(not(debug_assertions))]
+pub(crate) const API_ROOT: &str = "https://tracker.nathanprat.fr";
 
 #[function_component(App)]
 pub fn app() -> Html {
