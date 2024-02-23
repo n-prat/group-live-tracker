@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -7,8 +6,6 @@ use tokio::sync::broadcast;
 /// `https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/chat/src/main.rs#L26C1-L32C2`
 /// Our shared state
 pub(crate) struct AppState {
-    /// We require unique usernames. This tracks which usernames have been taken.
-    pub(crate) users_set: HashSet<String>,
     /// Channel used to send messages to all connected clients.
     pub(crate) chat_broadcast_sender: broadcast::Sender<String>,
     /// Channel used to send locations to all connected clients.
@@ -28,7 +25,6 @@ pub(crate) fn new_state() -> SharedState {
     let (location_tx, _rx) = broadcast::channel(100);
 
     let app_state = AppState {
-        users_set: HashSet::new(),
         chat_broadcast_sender: chat_tx,
         location_broadcast_sender: location_tx,
         geojson: None,

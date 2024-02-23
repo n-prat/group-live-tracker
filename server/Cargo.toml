@@ -29,7 +29,10 @@ geozero = { version = "0.12.0", features = ["with-geojson", "with-gpx"] }
 axum-server = { version = "0.6.0", features = ["tls-rustls"] }
 sqlx = { version = "0.7", features = ["runtime-async-std", "sqlite"] }
 argon2 = "0.5.3"
+env_logger = "0.11.2"
 
 [dev-dependencies]
 axum-test = "*"
 temp-env = { version = "*", features = ["async_closure"] }
+http-body-util = "0.1.0"
+mime = "0.3"

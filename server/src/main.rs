@@ -75,24 +75,14 @@ async fn main() -> Result<(), std::io::Error> {
     // enable console logging
     tracing_subscriber::fmt::init();
 
-    // https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/static-file-server/src/main.rs#L44
-    // `ServeDir` allows setting a fallback if an asset is not found
-    // so with this `GET /assets/doesnt-exist.jpg` will return `index.html`
-    // rather than a 404
-    // https://github.com/tokio-rs/axum/blob/9ebd105d0410dcb8a4133374c32415b5a6950371/examples/websockets/src/main.rs#L54
-    let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
-    let static_files_service = ServeDir::new(assets_dir).append_index_html_on_directories(true);
+    let app = new_app().await?;
 
-    let app_state = new_state();
+    let sock_addr = SocketAddr::from((
+        IpAddr::from_str(opt.addr.as_str()).unwrap_or(IpAddr::V6(Ipv6Addr::LOCALHOST)),
+        opt.port,
+    ));
 
-    let db_pool = db::setup_db("sqlite://file:db.sqlite?mode=rwc").await?;
-
-    #[allow(unused_mut)]
-    let mut cors_layer = CorsLayer::very_permissive();
-    #[cfg(not(debug_assertions))]
-    let origins = ["https://n-prat.github.io/".parse().unwrap()];
-    #[cfg(not(debug_assertions))]
-    let cors_layer = cors_layer.clone().allow_origin(origins);
+    tracing::info!("listening on http://{}", sock_addr);
 
     let tls_config = match (opt.tls_cert_path, opt.tls_key_path) {
         (Some(tls_cert_path), Some(tls_key_path)) => {
@@ -134,31 +124,6 @@ async fn main() -> Result<(), std::io::Error> {
         }
     };
 
-    let app = Router::new()
-        .route("/api/hello", get(hello))
-        .route(
-            "/api/gpx",
-            // cf https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/axum/src/lib.rs#L266
-            // post({
-            //     let app_state = Arc::clone(&app_state);
-            //     move |body, claims| route_gpx::handle_gpx_upload(app_state, claims, body)
-            // }),
-            post(route_gpx::handle_gpx_upload),
-        )
-        .route("/ws", get(ws_handler))
-        .route("/authorize", post(auth_jwt::authorize))
-        .fallback_service(static_files_service)
-        .layer(cors_layer)
-        .layer(Extension(app_state.clone()))
-        .with_state(app_state);
-
-    let sock_addr = SocketAddr::from((
-        IpAddr::from_str(opt.addr.as_str()).unwrap_or(IpAddr::V6(Ipv6Addr::LOCALHOST)),
-        opt.port,
-    ));
-
-    tracing::info!("listening on http://{}", sock_addr);
-
     match tls_config {
         Some(tls_config) => {
             axum_server::bind_rustls(sock_addr, tls_config)
@@ -182,4 +147,46 @@ async fn main() -> Result<(), std::io::Error> {
 
 async fn hello(_claims: Claims) -> impl IntoResponse {
     "hello from server!"
+}
+
+/// https://github.com/tokio-rs/axum/blob/4d65ba0215b57797193ec49245d32d4dd79bb701/examples/testing/src/main.rs#L36
+pub(crate) async fn new_app() -> Result<Router, std::io::Error> {
+    // https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/static-file-server/src/main.rs#L44
+    // `ServeDir` allows setting a fallback if an asset is not found
+    // so with this `GET /assets/doesnt-exist.jpg` will return `index.html`
+    // rather than a 404
+    // https://github.com/tokio-rs/axum/blob/9ebd105d0410dcb8a4133374c32415b5a6950371/examples/websockets/src/main.rs#L54
+    let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
+    let static_files_service = ServeDir::new(assets_dir).append_index_html_on_directories(true);
+
+    let app_state = new_state();
+
+    let db_pool = db::setup_db("sqlite://file:db.sqlite?mode=rwc").await?;
+
+    #[allow(unused_mut)]
+    let mut cors_layer = CorsLayer::very_permissive();
+    #[cfg(not(debug_assertions))]
+    let origins = ["https://n-prat.github.io/".parse().unwrap()];
+    #[cfg(not(debug_assertions))]
+    let cors_layer = cors_layer.clone().allow_origin(origins);
+
+    let app = Router::new()
+        .route("/api/hello", get(hello))
+        .route(
+            "/api/gpx",
+            // cf https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/axum/src/lib.rs#L266
+            // post({
+            //     let app_state = Arc::clone(&app_state);
+            //     move |body, claims| route_gpx::handle_gpx_upload(app_state, claims, body)
+            // }),
+            post(route_gpx::handle_gpx_upload),
+        )
+        .route("/ws", get(ws_handler))
+        .route("/authorize", post(auth_jwt::authorize))
+        .fallback_service(static_files_service)
+        .layer(cors_layer)
+        .layer(Extension(app_state.clone()))
+        .with_state(app_state);
+
+    Ok(app)
 }
