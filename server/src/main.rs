@@ -85,7 +85,7 @@ async fn main() -> Result<(), std::io::Error> {
 
     let app_state = new_state();
 
-    let db_pool = db::setup_db().await?;
+    let db_pool = db::setup_db("sqlite://file:db.sqlite?mode=rwc").await?;
 
     #[allow(unused_mut)]
     let mut cors_layer = CorsLayer::very_permissive();

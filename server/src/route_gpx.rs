@@ -133,7 +133,13 @@ mod tests {
         assert_eq!(response.status_code(), 200);
         assert_eq!(response_body, "");
         // FIXME
-        let geojson_str: String = app_state.geojson.lock().unwrap().as_ref().unwrap().clone();
+        let geojson_str: String = app_state
+            .write()
+            .unwrap()
+            .geojson
+            .as_ref()
+            .unwrap()
+            .to_string();
         assert_eq!(geojson_str.len(), 15830);
         // we use this reference file in the frontend tests
         let geojson_res: Value = serde_json::from_str(&geojson_str).unwrap();
