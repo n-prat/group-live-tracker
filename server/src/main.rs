@@ -25,6 +25,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
 mod auth_jwt;
+mod db;
 mod errors_and_responses;
 mod route_gpx;
 mod state;
@@ -83,6 +84,8 @@ async fn main() -> Result<(), std::io::Error> {
     let static_files_service = ServeDir::new(assets_dir).append_index_html_on_directories(true);
 
     let app_state = new_state();
+
+    let db_pool = db::setup_db().await?;
 
     #[allow(unused_mut)]
     let mut cors_layer = CorsLayer::very_permissive();

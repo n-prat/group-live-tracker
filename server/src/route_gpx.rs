@@ -132,6 +132,7 @@ mod tests {
         // Assert the response is as expected
         assert_eq!(response.status_code(), 200);
         assert_eq!(response_body, "");
+        // FIXME
         let geojson_str: String = app_state.geojson.lock().unwrap().as_ref().unwrap().clone();
         assert_eq!(geojson_str.len(), 15830);
         // we use this reference file in the frontend tests

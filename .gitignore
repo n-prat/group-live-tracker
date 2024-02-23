@@ -5,6 +5,8 @@
 /*.crt
 /*.cert
 /*.key
+**/.env
+**/*.sqlite
 
 # prod
 /docs
