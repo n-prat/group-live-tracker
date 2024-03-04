@@ -36,3 +36,7 @@ axum-test = "*"
 temp-env = { version = "*", features = ["async_closure"] }
 http-body-util = "0.1.0"
 mime = "0.3"
+tokio-tungstenite = "0.21"
+base64 = "*"
+rand = "*"
+uri = "*"

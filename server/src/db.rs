@@ -3,12 +3,8 @@ use argon2::{
     Argon2,
 };
 use futures::TryFutureExt;
-use sqlx::migrate::Migrator;
 use sqlx::Row;
-use sqlx::{
-    sqlite::{SqlitePoolOptions, SqliteQueryResult},
-    Pool, Sqlite,
-};
+use sqlx::{sqlite::SqlitePoolOptions, Pool, Sqlite};
 
 /// Prepare a DB connection pool AND run migrations(eg CREATE TABLE etc)
 /// see https://docs.rs/sqlx/latest/sqlx/macro.migrate.html#

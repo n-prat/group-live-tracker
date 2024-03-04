@@ -244,4 +244,129 @@ async fn handle_socket_geolocation(
 //     ControlFlow::Continue(())
 // }
 
-// TODO(tests) cf https://github.com/tokio-rs/axum/blob/main/examples/testing-websockets/src/main.rs
+/// cf https://github.com/tokio-rs/axum/blob/main/examples/testing-websockets/src/main.rs
+#[cfg(test)]
+mod tests {
+    use crate::new_app;
+
+    use super::*;
+
+    use axum_test::http::Request;
+    use base64::Engine;
+    use rand::Rng;
+    use std::{
+        future::IntoFuture,
+        net::{Ipv4Addr, SocketAddr},
+    };
+    use tokio_tungstenite::tungstenite::{self};
+
+    async fn setup(websocket_protocol: &str, username: &str) -> Request<()> {
+        let listener = tokio::net::TcpListener::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0)))
+            .await
+            .unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(
+            axum::serve(
+                listener,
+                new_app()
+                    .await
+                    .unwrap()
+                    .into_make_service_with_connect_info::<SocketAddr>(),
+            )
+            .into_future(),
+        );
+
+        // "Generate a random 16-byte nonce"
+        let nonce: [u8; 16] = rand::thread_rng().gen();
+        let sec_websocket_key = base64::engine::general_purpose::STANDARD.encode(&nonce);
+
+        let token = crate::auth_jwt::tests::generate_token(username);
+
+        let request = Request::builder()
+            .uri(format!("ws://{addr}/ws?token={token}"))
+            .header("Host", "127.0.0.1")
+            .header("Upgrade", "websocket")
+            .header("Connection", "Upgrade")
+            .header(
+                tungstenite::http::header::SEC_WEBSOCKET_PROTOCOL,
+                websocket_protocol,
+            )
+            .header(
+                tungstenite::http::header::SEC_WEBSOCKET_KEY,
+                sec_websocket_key,
+            )
+            // `Sec-WebSocket-Version` header did not include '13'
+            // "The most recent final version of the WebSocket protocol is version 13."
+            // cf https://developer.mozilla.org/en-US/docs/Web/HTTP/Protocol_upgrade_mechanism#version
+            .header(tungstenite::http::header::SEC_WEBSOCKET_VERSION, "13")
+            .body(())
+            .unwrap();
+
+        request
+    }
+
+    #[tokio::test]
+    async fn test_handle_socket_chat() {
+        let username = "aaa";
+
+        let request = setup("chat", username).await;
+        let (mut socket, _response) = tokio_tungstenite::connect_async(request).await.unwrap();
+
+        socket
+            .send(tungstenite::Message::Text("hello world".to_string()))
+            .await
+            .expect("Failed to write WebSocket request");
+
+        let msg = match socket.next().await.unwrap().unwrap() {
+            tungstenite::Message::Text(msg) => msg,
+            other => panic!("expected a text message but got {other:?}"),
+        };
+
+        assert_eq!(msg, format!("{username} joined."));
+
+        socket
+            .send(tungstenite::Message::Text("does not matter".to_string()))
+            .await
+            .expect("Failed to write WebSocket request");
+
+        let msg = match socket.next().await.unwrap().unwrap() {
+            tungstenite::Message::Text(msg) => msg,
+            other => panic!("expected a text message but got {other:?}"),
+        };
+
+        assert_eq!(msg, format!("{username}: hello world"));
+    }
+
+    // NOTE: for now the logic is exactly the same as `handle_socket_chat`
+    #[tokio::test]
+    async fn test_handle_socket_geolocation() {
+        let username = "aaa";
+
+        let request = setup("geolocation", username).await;
+        let (mut socket, _response) = tokio_tungstenite::connect_async(request).await.unwrap();
+
+        socket
+            .send(tungstenite::Message::Text("hello world".to_string()))
+            .await
+            .expect("Failed to write WebSocket request");
+
+        let msg = match socket.next().await.unwrap().unwrap() {
+            tungstenite::Message::Text(msg) => msg,
+            other => panic!("expected a text message but got {other:?}"),
+        };
+
+        assert_eq!(msg, format!("{username} joined."));
+
+        socket
+            .send(tungstenite::Message::Text("does not matter".to_string()))
+            .await
+            .expect("Failed to write WebSocket request");
+
+        let msg = match socket.next().await.unwrap().unwrap() {
+            tungstenite::Message::Text(msg) => msg,
+            other => panic!("expected a text message but got {other:?}"),
+        };
+
+        assert_eq!(msg, format!("{username}: hello world"));
+    }
+}
