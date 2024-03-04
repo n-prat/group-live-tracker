@@ -243,3 +243,5 @@ async fn handle_socket_geolocation(
 //     }
 //     ControlFlow::Continue(())
 // }
+
+// TODO(tests) cf https://github.com/tokio-rs/axum/blob/main/examples/testing-websockets/src/main.rs

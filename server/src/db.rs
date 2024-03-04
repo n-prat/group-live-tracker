@@ -3,12 +3,16 @@ use argon2::{
     Argon2,
 };
 use futures::TryFutureExt;
+use sqlx::migrate::Migrator;
 use sqlx::Row;
 use sqlx::{
     sqlite::{SqlitePoolOptions, SqliteQueryResult},
     Pool, Sqlite,
 };
 
+/// Prepare a DB connection pool AND run migrations(eg CREATE TABLE etc)
+/// see https://docs.rs/sqlx/latest/sqlx/macro.migrate.html#
+///
 /// params:
 /// - db_url: &str eg "sqlite://file:db.sqlite?mode=rwc"
 pub(crate) async fn setup_db(db_url: &str) -> Result<Pool<Sqlite>, std::io::Error> {
@@ -29,30 +33,19 @@ pub(crate) async fn setup_db(db_url: &str) -> Result<Pool<Sqlite>, std::io::Erro
         })
         .await?;
 
-    create_table_user(&pool).await?;
-
-    Ok(pool)
-}
-
-async fn create_table_user(pool: &Pool<Sqlite>) -> Result<SqliteQueryResult, std::io::Error> {
-    let query = r#"
-        CREATE TABLE IF NOT EXISTS user (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL,
-            is_super_user BOOLEAN NOT NULL DEFAULT FALSE
-        );
-    "#;
-    sqlx::query(query)
-        .execute(pool)
+    // https://docs.rs/sqlx/latest/sqlx/macro.migrate.html#
+    sqlx::migrate!("../server/migrations")
+        .run(&pool)
+        .await
         .map_err(|err| {
-            tracing::error!("sqlite query error: {:?}", err,);
+            tracing::info!("sqlx::migrate error: {:?}", err,);
             std::io::Error::new(
                 std::io::ErrorKind::Other,
-                format!("sqlite query error: {:?}", err,),
+                format!("sqlx::migrate error: {:?}", err,),
             )
-        })
-        .await
+        })?;
+
+    Ok(pool)
 }
 
 /// INSERT a new user, with a random "salt"

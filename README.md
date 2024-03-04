@@ -17,6 +17,7 @@ https://n-prat.github.io/group-live-tracker/
 
 - display the history of a SPECIFIC user instead the whole .gpx track
 - allow to select the "leader" that will be used for the history
+- TODO? replace Auth header by https://github.com/imbolc/tower-cookies ?
 
 ### ARCHIVE
 
