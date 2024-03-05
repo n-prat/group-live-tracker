@@ -21,7 +21,7 @@ use jsonwebtoken::{decode, Validation};
 use serde::Deserialize;
 
 use crate::{
-    auth_jwt::{Claims, KEYS},
+    api_authorize_jwt::{Claims, KEYS},
     errors_and_responses::AppError,
     state::SharedState,
 };
@@ -282,7 +282,7 @@ mod tests {
         let nonce: [u8; 16] = rand::thread_rng().gen();
         let sec_websocket_key = base64::engine::general_purpose::STANDARD.encode(&nonce);
 
-        let token = crate::auth_jwt::tests::generate_token(username);
+        let token = crate::api_authorize_jwt::tests::generate_token(username);
 
         let request = Request::builder()
             .uri(format!("ws://{addr}/ws?token={token}"))

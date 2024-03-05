@@ -15,7 +15,7 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use auth_jwt::Claims;
+use api_authorize_jwt::Claims;
 use axum::routing::post;
 use axum::Extension;
 use axum::{response::IntoResponse, routing::get, Router};
@@ -25,7 +25,8 @@ use sqlx::SqlitePool;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
-mod auth_jwt;
+mod api_authorize_jwt;
+mod api_user;
 mod db;
 mod errors_and_responses;
 mod route_gpx;
@@ -182,7 +183,9 @@ pub(crate) async fn new_app(db_pool: SqlitePool) -> Result<Router, std::io::Erro
             post(route_gpx::handle_gpx_upload),
         )
         .route("/ws", get(ws_handler))
-        .route("/authorize", post(auth_jwt::authorize))
+        .route("/authorize", post(api_authorize_jwt::authorize))
+        .route("/users", get(api_user::list_users))
+        .route("/user/set_superuser", post(api_user::set_superuser))
         .fallback_service(static_files_service)
         .layer(cors_layer)
         .layer(Extension(app_state.clone()))

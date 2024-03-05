@@ -3,7 +3,8 @@ use axum::Extension;
 use geozero::gpx::GpxReader;
 use geozero::ProcessToJson;
 
-use crate::auth_jwt::Claims;
+use crate::api_authorize_jwt::Claims;
+use crate::db::get_user_from_db;
 use crate::errors_and_responses::AppError;
 use crate::state::SharedState;
 
@@ -11,9 +12,34 @@ use crate::state::SharedState;
 #[axum::debug_handler]
 pub(crate) async fn handle_gpx_upload(
     Extension(state): Extension<SharedState>,
-    _claims: Claims,
+    claims: Claims,
     mut multipart: Multipart,
 ) -> Result<(), AppError> {
+    // check the user credentials from a database
+    let db_pool = &state.read().unwrap().db_pool.clone();
+    match get_user_from_db(db_pool, &claims.sub).await {
+        Ok(Some(user)) => {
+            // Handle the case when the user is found in the database
+            if !user.is_super_user {
+                tracing::error!(
+                    "handle_gpx_upload: user found but NOT a superuser: {:?}",
+                    claims.sub,
+                );
+                return Err(AppError::NotFound);
+            }
+        }
+        Ok(None) => {
+            // Handle the case when the user is not found in the database
+            tracing::error!("handle_gpx_upload: user not found: {:?}", claims.sub,);
+            return Err(AppError::NotFound);
+        }
+        Err(err) => {
+            // Handle the case when an error occurs during the database query
+            tracing::error!("authorize: db error: {:?}", err,);
+            return Err(AppError::InternalError);
+        }
+    }
+
     while let Some(field) = multipart.next_field().await.unwrap() {
         // let field = field.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
         // TODO? check field.name() == "file" ?
@@ -78,7 +104,7 @@ mod tests {
     use std::str::FromStr;
 
     use axum::{
-        http::{HeaderName, HeaderValue},
+        http::{HeaderName, HeaderValue, StatusCode},
         Router,
     };
     use axum_test::{
@@ -87,15 +113,18 @@ mod tests {
     };
     use serde_json::Value;
 
-    use crate::db::setup_db;
+    use crate::db::{insert_user, setup_db, update_user_to_superuser};
     use crate::new_state;
 
     use super::*;
 
     #[tokio::test]
-    async fn test_handle_gpx_upload() {
+    async fn test_handle_gpx_upload_superuser_ok() {
         let f = async {
             let db_pool = setup_db("sqlite::memory:").await.unwrap();
+            let username = "aaa";
+            insert_user(&db_pool, username, "password").await.unwrap();
+            update_user_to_superuser(&db_pool, username).await.unwrap();
             let app_state = new_state(db_pool);
 
             let my_app = Router::new()
@@ -105,7 +134,7 @@ mod tests {
             // Create a TestServer with your application
             let server = TestServer::new(my_app).unwrap();
 
-            let token = crate::auth_jwt::tests::generate_token("aaa");
+            let token = crate::api_authorize_jwt::tests::generate_token(username);
 
             // Create a multipart form data payload
             let bytes = include_bytes!("../tests/data/2024-02-19_1444960792_MJ 19_02.gpx");
@@ -150,5 +179,96 @@ mod tests {
         ))
         .unwrap();
         assert_eq!(geojson_res, geojson_ref);
+    }
+
+    /// test that ONLY a superuser can upload a GPX file
+    #[tokio::test]
+    async fn test_handle_gpx_upload_must_be_superuser_else_404() {
+        let f = async {
+            let db_pool = setup_db("sqlite::memory:").await.unwrap();
+            let username = "aaa";
+            insert_user(&db_pool, username, "password").await.unwrap();
+            let app_state = new_state(db_pool);
+
+            let my_app = Router::new()
+                .route("/api/gpx", axum::routing::post(handle_gpx_upload))
+                .layer(Extension(app_state.clone()));
+
+            // Create a TestServer with your application
+            let server = TestServer::new(my_app).unwrap();
+
+            let token = crate::api_authorize_jwt::tests::generate_token(username);
+
+            // Create a multipart form data payload
+            let bytes = include_bytes!("../tests/data/2024-02-19_1444960792_MJ 19_02.gpx");
+            let file_part = Part::bytes(bytes.as_slice())
+                .file_name("file.gpx")
+                .mime_type("text/plain");
+
+            // Build a TestRequest
+            let response = server
+                .post("/api/gpx")
+                .add_header(
+                    HeaderName::from_str("Authorization").unwrap(),
+                    HeaderValue::from_str(&format!("Bearer {}", token)).unwrap(),
+                )
+                .multipart(MultipartForm::new().add_part("file", file_part))
+                .await;
+
+            (response, app_state)
+        };
+
+        let (response, _app_state) =
+            temp_env::async_with_vars([("JWT_SECRET", Some("0123456789"))], f).await;
+
+        let _response_body = response.text();
+
+        // Assert the response is as expected
+        assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+    }
+
+    /// test that ONLY a superuser can upload a GPX file
+    #[tokio::test]
+    async fn test_handle_gpx_upload_user_not_in_db_should_fail_404() {
+        let f = async {
+            let db_pool = setup_db("sqlite::memory:").await.unwrap();
+            let username = "aaa";
+            let app_state = new_state(db_pool);
+
+            let my_app = Router::new()
+                .route("/api/gpx", axum::routing::post(handle_gpx_upload))
+                .layer(Extension(app_state.clone()));
+
+            // Create a TestServer with your application
+            let server = TestServer::new(my_app).unwrap();
+
+            let token = crate::api_authorize_jwt::tests::generate_token(username);
+
+            // Create a multipart form data payload
+            let bytes = include_bytes!("../tests/data/2024-02-19_1444960792_MJ 19_02.gpx");
+            let file_part = Part::bytes(bytes.as_slice())
+                .file_name("file.gpx")
+                .mime_type("text/plain");
+
+            // Build a TestRequest
+            let response = server
+                .post("/api/gpx")
+                .add_header(
+                    HeaderName::from_str("Authorization").unwrap(),
+                    HeaderValue::from_str(&format!("Bearer {}", token)).unwrap(),
+                )
+                .multipart(MultipartForm::new().add_part("file", file_part))
+                .await;
+
+            (response, app_state)
+        };
+
+        let (response, _app_state) =
+            temp_env::async_with_vars([("JWT_SECRET", Some("0123456789"))], f).await;
+
+        let _response_body = response.text();
+
+        // Assert the response is as expected
+        assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
     }
 }

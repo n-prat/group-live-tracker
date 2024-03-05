@@ -25,6 +25,10 @@ pub(crate) enum AppError {
     JsonRejection(JsonRejection),
     LoginError,
     BadRequest,
+    /// NOTE: for security reasons, this is ALSO used when trying to access protected routes (eg not a superuser, etc)
+    NotFound,
+    /// eg DB error, etc
+    InternalError,
 }
 
 // Tell axum how `AppError` should be converted into a response.
@@ -46,6 +50,11 @@ impl IntoResponse for AppError {
             //
             AppError::LoginError => (StatusCode::BAD_REQUEST, "login error".to_owned()),
             AppError::BadRequest => (StatusCode::BAD_REQUEST, "bad request".to_owned()),
+            AppError::NotFound => (StatusCode::NOT_FOUND, "not found".to_owned()),
+            AppError::InternalError => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal error".to_owned(),
+            ),
             // AppError::TimeError(err) => {
             //     // Because `TraceLayer` wraps each request in a span that contains the request
             //     // method, uri, etc we don't need to include those details here

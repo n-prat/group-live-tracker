@@ -172,6 +172,64 @@ pub(crate) async fn get_user_from_db(
     Ok(Some(user))
 }
 
+/// simply check if a user is in the db or not
+/// reminder: we want "anynomous" users to be able to access the app
+pub(crate) async fn list_users_from_db(pool: &SqlitePool) -> Result<Vec<User>, std::io::Error> {
+    let query = r#"
+        SELECT username, password_hash, is_super_user FROM user
+    "#;
+    let rows = match sqlx::query(query).fetch_all(pool).await {
+        Ok(row) => row,
+        Err(err) => match err {
+            _ => {
+                tracing::error!("sqlite query error: {:?}", err,);
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("sqlite query error: {:?}", err,),
+                ));
+            }
+        },
+    };
+
+    let mut all_users = vec![];
+    for row in rows {
+        let user = User {
+            username: row.get("username"),
+            password_hash: row.get("password_hash"),
+            is_super_user: row.get("is_super_user"),
+        };
+
+        all_users.push(user);
+    }
+
+    Ok(all_users)
+}
+
+/// UPDATE a given user to be a super user
+pub(crate) async fn update_user_to_superuser(
+    pool: &SqlitePool,
+    username: &str,
+) -> Result<(), std::io::Error> {
+    let query = r#"
+        UPDATE user
+        SET is_super_user = 1
+        WHERE username = $1
+    "#;
+    sqlx::query(query)
+        .bind(username)
+        .execute(pool)
+        .map_err(|err| {
+            tracing::error!("sqlite query error: {:?}", err,);
+            std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("sqlite query error: {:?}", err,),
+            )
+        })
+        .await?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
@@ -253,5 +311,69 @@ pub(crate) mod tests {
         assert!(res.is_ok());
         let maybe_user = res.unwrap();
         assert!(maybe_user.is_none());
+    }
+
+    #[sqlx::test]
+    async fn test_update_user_to_superuser_ok() {
+        let db_pool = setup_db("sqlite::memory:").await.unwrap();
+
+        let username = "aaa";
+        let password_hash = insert_user(&db_pool, username, "bbb").await.unwrap();
+
+        let res = get_user_from_db(&db_pool, username).await;
+        assert_eq!(
+            res.unwrap().unwrap(),
+            User {
+                username: username.to_string(),
+                password_hash: password_hash.clone(),
+                is_super_user: false,
+            }
+        );
+
+        assert!(update_user_to_superuser(&db_pool, username).await.is_ok());
+
+        let res = get_user_from_db(&db_pool, username).await;
+        assert_eq!(
+            res.unwrap().unwrap(),
+            User {
+                username: username.to_string(),
+                password_hash,
+                is_super_user: true,
+            }
+        );
+    }
+
+    #[sqlx::test]
+    async fn test_list_users_from_db_ok() {
+        let db_pool = setup_db("sqlite::memory:").await.unwrap();
+
+        let username1 = "111";
+        let password_hash1 = insert_user(&db_pool, username1, "bbb").await.unwrap();
+        let username2 = "222";
+        let password_hash2 = insert_user(&db_pool, username2, "bbb").await.unwrap();
+        let username3 = "333";
+        let password_hash3 = insert_user(&db_pool, username3, "bbb").await.unwrap();
+
+        let res = list_users_from_db(&db_pool).await.unwrap();
+        assert_eq!(
+            res,
+            vec![
+                User {
+                    username: username1.to_string(),
+                    password_hash: password_hash1.clone(),
+                    is_super_user: false,
+                },
+                User {
+                    username: username2.to_string(),
+                    password_hash: password_hash2.clone(),
+                    is_super_user: false,
+                },
+                User {
+                    username: username3.to_string(),
+                    password_hash: password_hash3.clone(),
+                    is_super_user: false,
+                }
+            ]
+        );
     }
 }
