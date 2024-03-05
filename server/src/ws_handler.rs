@@ -36,6 +36,7 @@ pub(crate) struct QueryToken {
 /// websocket protocol will occur.
 /// This is the last point where we can extract TCP/IP metadata such as IP address of the client
 /// as well as things from HTTP headers such as user-agent of the browser etc.
+#[axum::debug_handler]
 pub(crate) async fn ws_handler(
     ws: WebSocketUpgrade,
     user_agent: Option<TypedHeader<headers::UserAgent>>,
@@ -247,7 +248,7 @@ async fn handle_socket_geolocation(
 /// cf https://github.com/tokio-rs/axum/blob/main/examples/testing-websockets/src/main.rs
 #[cfg(test)]
 mod tests {
-    use crate::new_app;
+    use crate::{db::setup_db, new_app};
 
     use super::*;
 
@@ -265,10 +266,11 @@ mod tests {
             .await
             .unwrap();
         let addr = listener.local_addr().unwrap();
+        let db_pool = setup_db("sqlite::memory:").await.unwrap();
         tokio::spawn(
             axum::serve(
                 listener,
-                new_app()
+                new_app(db_pool)
                     .await
                     .unwrap()
                     .into_make_service_with_connect_info::<SocketAddr>(),

@@ -5,7 +5,7 @@ use axum::{
     extract::FromRequestParts,
     http::{request::Parts, StatusCode},
     response::{IntoResponse, Response},
-    Json, RequestPartsExt,
+    Extension, Json, RequestPartsExt,
 };
 use axum_extra::{
     headers::{authorization::Bearer, Authorization},
@@ -15,7 +15,13 @@ use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation}
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use sqlx::SqlitePool;
 use std::fmt::Display;
+
+use crate::{
+    db::{get_user_from_db, user_check_password},
+    state::SharedState,
+};
 
 // Quick instructions
 //
@@ -76,18 +82,40 @@ pub(crate) static KEYS: Lazy<Keys> = Lazy::new(|| {
 //     ))
 // }
 
+#[axum::debug_handler]
 pub(crate) async fn authorize(
+    Extension(state): Extension<SharedState>,
     Json(payload): Json<LoginRequest>,
 ) -> Result<Json<AuthBody>, AuthError> {
     // Check if the user sent the credentials
-    // TODO? || payload.password.is_empty()
     if payload.email.is_empty() {
         return Err(AuthError::MissingCredentials);
     }
-    // TODO? Here you can check the user credentials from a database
-    // if payload.client_id != "foo" || payload.client_secret != "bar" {
-    //     return Err(AuthError::WrongCredentials);
-    // }
+
+    // check the user credentials from a database
+    let db_pool = &state.read().unwrap().db_pool.clone();
+    match get_user_from_db(db_pool, &payload.email).await {
+        Ok(Some(user)) => {
+            // Handle the case when the user is found in the database
+            // in this case we MUST check the password field!
+            if let Some(password) = payload.password {
+                user_check_password(&user, &password)
+                    .await
+                    .map_err(|_err| AuthError::WrongCredentials)?;
+            } else {
+                return Err(AuthError::MissingCredentials);
+            }
+        }
+        Ok(None) => {
+            // Handle the case when the user is not found in the database
+            // in this case we DO NOT check the password field
+        }
+        Err(err) => {
+            // Handle the case when an error occurs during the database query
+            tracing::error!("authorize: db error: {:?}", err,);
+            return Err(AuthError::DbError);
+        }
+    }
     let claims = Claims {
         sub: payload.email.to_owned(),
         company: "ACME".to_owned(),
@@ -145,6 +173,7 @@ impl IntoResponse for AuthError {
             AuthError::MissingCredentials => (StatusCode::BAD_REQUEST, "Missing credentials"),
             AuthError::TokenCreation => (StatusCode::INTERNAL_SERVER_ERROR, "Token creation error"),
             AuthError::InvalidToken => (StatusCode::BAD_REQUEST, "Invalid token"),
+            AuthError::DbError => (StatusCode::INTERNAL_SERVER_ERROR, "DB error"),
         };
         let body = Json(json!({
             "error": error_message,
@@ -189,6 +218,7 @@ pub(crate) struct AuthBody {
 #[derive(Deserialize)]
 pub(crate) struct LoginRequest {
     pub(crate) email: String,
+    pub(crate) password: Option<String>,
 }
 
 #[derive(Debug)]
@@ -197,22 +227,31 @@ pub(crate) enum AuthError {
     MissingCredentials,
     TokenCreation,
     InvalidToken,
+    DbError,
 }
 
 #[cfg(test)]
 pub(crate) mod tests {
+    use crate::db::{insert_user, setup_db};
+
     use super::*;
 
     use axum::body::Body;
     use axum::http::Request;
     use axum::http::{self};
+    use axum::Router;
     use http_body_util::BodyExt;
     use serde_json::Value;
     use tower::util::ServiceExt;
 
-    fn init() {
+    async fn init() -> (Router, SqlitePool) {
         // https://docs.rs/crate/env_logger/latest
         let _ = env_logger::builder().is_test(true).try_init();
+
+        let db_pool = setup_db("sqlite::memory:").await.unwrap();
+        let app = crate::new_app(db_pool.clone()).await.unwrap();
+
+        (app, db_pool)
     }
 
     /// Generate a Auth token that can be used in the various "#[tokio::test]"
@@ -232,11 +271,9 @@ pub(crate) mod tests {
     /// We WANT a random user to be able to "login"
     #[tokio::test]
     async fn test_authorize_without_user_in_db_should_work() {
-        init();
+        let (app, _db_pool) = init().await;
 
         let f = async {
-            let app = crate::new_app().await.unwrap();
-
             // `Router` implements `tower::Service<Request<Body>>` so we can
             // call it like any tower service, no need to run an HTTP server.
             let response = app
@@ -246,6 +283,125 @@ pub(crate) mod tests {
                         .method(http::Method::POST)
                         .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
                         .body(Body::from(json!({ "email": "aaa" }).to_string()))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            response
+        };
+
+        let response = temp_env::async_with_vars([("JWT_SECRET", Some("0123456789"))], f).await;
+        let response_status = response.status();
+        let response_body = response.into_body().collect().await.unwrap().to_bytes();
+        // println!("response_body: {:?}", response_body);
+        // println!("status: {:?}", response_status);
+
+        assert_eq!(response_status, StatusCode::OK);
+        let body: Value = serde_json::from_slice(&response_body).unwrap();
+        assert_eq!(body["token_type"], "Bearer");
+        assert_eq!(body["access_token"].to_string().len(), 146);
+    }
+
+    /// test authorize: a user that exists in the DB must login with a username and password
+    #[tokio::test]
+    async fn test_authorize_with_user_in_db_but_no_password_should_fail() {
+        let (app, db_pool) = init().await;
+
+        let username = "aaa";
+        let password = "my_password";
+        insert_user(&db_pool, username, password).await.unwrap();
+
+        let f = async {
+            // `Router` implements `tower::Service<Request<Body>>` so we can
+            // call it like any tower service, no need to run an HTTP server.
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri("/authorize")
+                        .method(http::Method::POST)
+                        .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                        .body(Body::from(json!({ "email": username }).to_string()))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            response
+        };
+
+        let response = temp_env::async_with_vars([("JWT_SECRET", Some("0123456789"))], f).await;
+        let response_status = response.status();
+        let response_body = response.into_body().collect().await.unwrap().to_bytes();
+        // println!("response_body: {:?}", response_body);
+        // println!("status: {:?}", response_status);
+
+        assert_eq!(response_status, StatusCode::BAD_REQUEST);
+        let body: Value = serde_json::from_slice(&response_body).unwrap();
+        assert_eq!(body["error"], "Missing credentials");
+    }
+
+    /// test authorize: a user that exists in the DB must login with a username and password
+    #[tokio::test]
+    async fn test_authorize_with_user_in_db_and_bad_password_should_fail() {
+        let (app, db_pool) = init().await;
+
+        let username = "aaa";
+        let password = "my_password";
+        insert_user(&db_pool, username, password).await.unwrap();
+
+        let f = async {
+            // `Router` implements `tower::Service<Request<Body>>` so we can
+            // call it like any tower service, no need to run an HTTP server.
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri("/authorize")
+                        .method(http::Method::POST)
+                        .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                        .body(Body::from(
+                            json!({ "email": username, "password": "BAD" }).to_string(),
+                        ))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            response
+        };
+
+        let response = temp_env::async_with_vars([("JWT_SECRET", Some("0123456789"))], f).await;
+        let response_status = response.status();
+        let response_body = response.into_body().collect().await.unwrap().to_bytes();
+        // println!("response_body: {:?}", response_body);
+        // println!("status: {:?}", response_status);
+
+        assert_eq!(response_status, StatusCode::UNAUTHORIZED);
+        let body: Value = serde_json::from_slice(&response_body).unwrap();
+        assert_eq!(body["error"], "Wrong credentials");
+    }
+
+    /// test authorize: a user that exists in the DB must login with a username and password
+    #[tokio::test]
+    async fn test_authorize_with_user_in_db_and_good_password_should_work() {
+        let (app, db_pool) = init().await;
+
+        let username = "aaa";
+        let password = "my_password";
+        insert_user(&db_pool, username, password).await.unwrap();
+
+        let f = async {
+            // `Router` implements `tower::Service<Request<Body>>` so we can
+            // call it like any tower service, no need to run an HTTP server.
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri("/authorize")
+                        .method(http::Method::POST)
+                        .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                        .body(Body::from(
+                            json!({ "email": username, "password": password }).to_string(),
+                        ))
                         .unwrap(),
                 )
                 .await

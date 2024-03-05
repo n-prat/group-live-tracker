@@ -21,6 +21,7 @@ use axum::Extension;
 use axum::{response::IntoResponse, routing::get, Router};
 use axum_server::tls_rustls::RustlsConfig;
 use clap::Parser;
+use sqlx::SqlitePool;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
@@ -75,7 +76,8 @@ async fn main() -> Result<(), std::io::Error> {
     // enable console logging
     tracing_subscriber::fmt::init();
 
-    let app = new_app().await?;
+    let db_pool = db::setup_db("sqlite://file:db.sqlite?mode=rwc").await?;
+    let app = new_app(db_pool).await?;
 
     let sock_addr = SocketAddr::from((
         IpAddr::from_str(opt.addr.as_str()).unwrap_or(IpAddr::V6(Ipv6Addr::LOCALHOST)),
@@ -150,7 +152,7 @@ async fn hello(_claims: Claims) -> impl IntoResponse {
 }
 
 /// https://github.com/tokio-rs/axum/blob/4d65ba0215b57797193ec49245d32d4dd79bb701/examples/testing/src/main.rs#L36
-pub(crate) async fn new_app() -> Result<Router, std::io::Error> {
+pub(crate) async fn new_app(db_pool: SqlitePool) -> Result<Router, std::io::Error> {
     // https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/static-file-server/src/main.rs#L44
     // `ServeDir` allows setting a fallback if an asset is not found
     // so with this `GET /assets/doesnt-exist.jpg` will return `index.html`
@@ -159,9 +161,7 @@ pub(crate) async fn new_app() -> Result<Router, std::io::Error> {
     let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
     let static_files_service = ServeDir::new(assets_dir).append_index_html_on_directories(true);
 
-    let app_state = new_state();
-
-    let db_pool = db::setup_db("sqlite://file:db.sqlite?mode=rwc").await?;
+    let app_state = new_state(db_pool);
 
     #[allow(unused_mut)]
     let mut cors_layer = CorsLayer::very_permissive();

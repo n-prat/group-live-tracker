@@ -87,6 +87,7 @@ mod tests {
     };
     use serde_json::Value;
 
+    use crate::db::setup_db;
     use crate::new_state;
 
     use super::*;
@@ -94,7 +95,8 @@ mod tests {
     #[tokio::test]
     async fn test_handle_gpx_upload() {
         let f = async {
-            let app_state = new_state();
+            let db_pool = setup_db("sqlite::memory:").await.unwrap();
+            let app_state = new_state(db_pool);
 
             let my_app = Router::new()
                 .route("/api/gpx", axum::routing::post(handle_gpx_upload))
