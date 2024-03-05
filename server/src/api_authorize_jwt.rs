@@ -1,4 +1,4 @@
-/// https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/jwt/src/main.rs#L1
+/// `https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/jwt/src/main.rs#L1`
 // TODO use a turnkey JWT crate/lib from https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/ECOSYSTEM.md?plain=1#L13 ?
 use axum::{
     async_trait,
@@ -15,7 +15,6 @@ use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation}
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use sqlx::SqlitePool;
 use std::fmt::Display;
 
 use crate::{
@@ -49,6 +48,7 @@ use crate::{
 //     -H 'Authorization: Bearer blahblahblah' \
 //     http://localhost:3000/protected
 
+#[allow(clippy::expect_used)]
 pub(crate) static KEYS: Lazy<Keys> = Lazy::new(|| {
     let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
     Keys::new(secret.as_bytes())
@@ -93,8 +93,14 @@ pub(crate) async fn authorize(
     }
 
     // check the user credentials from a database
-    let db_pool = &state.read().unwrap().db_pool.clone();
-    match get_user_from_db(db_pool, &payload.email).await {
+    let db_pool = match state.read() {
+        Ok(state) => state.db_pool.clone(),
+        Err(err) => {
+            tracing::error!("authorize: state read lock error: {:?}", err,);
+            return Err(AuthError::DbError);
+        }
+    };
+    match get_user_from_db(&db_pool, &payload.email).await {
         Ok(Some(user)) => {
             // Handle the case when the user is found in the database
             // in this case we MUST check the password field!
@@ -117,10 +123,10 @@ pub(crate) async fn authorize(
         }
     }
     let claims = Claims {
-        sub: payload.email.to_owned(),
+        sub: payload.email,
         company: "ACME".to_owned(),
         // Mandatory expiry time as UTC timestamp
-        exp: 2000000000, // May 2033
+        exp: 2_000_000_000, // May 2033
     };
     // Create the authorization token
     let token = encode(&Header::default(), &claims, &KEYS.encoding)
@@ -242,6 +248,7 @@ pub(crate) mod tests {
     use axum::Router;
     use http_body_util::BodyExt;
     use serde_json::Value;
+    use sqlx::SqlitePool;
     use tower::util::ServiceExt;
 
     async fn init() -> (Router, SqlitePool) {
@@ -249,7 +256,7 @@ pub(crate) mod tests {
         let _ = env_logger::builder().is_test(true).try_init();
 
         let db_pool = setup_db("sqlite::memory:").await.unwrap();
-        let app = crate::new_app(db_pool.clone()).await.unwrap();
+        let app = crate::new_app(db_pool.clone()).unwrap();
 
         (app, db_pool)
     }

@@ -18,7 +18,7 @@ pub(crate) struct AppState {
 }
 
 /// For now just an Arc; but if needed we can add a `RwLock`
-/// cf https://github.com/tokio-rs/axum/blob/4d65ba0215b57797193ec49245d32d4dd79bb701/examples/key-value-store/src/main.rs#L83
+/// cf `https://github.com/tokio-rs/axum/blob/4d65ba0215b57797193ec49245d32d4dd79bb701/examples/key-value-store/src/main.rs#L83`
 pub(crate) type SharedState = Arc<RwLock<AppState>>;
 
 pub(crate) fn new_state(db_pool: SqlitePool) -> SharedState {

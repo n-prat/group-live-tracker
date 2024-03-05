@@ -1,4 +1,4 @@
-/// https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/components/alert.rs
+/// `https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/components/alert.rs`
 ///
 use gloo::timers::callback::Timeout;
 use yew::prelude::*;
@@ -12,6 +12,7 @@ pub struct Props {
     pub delay_ms: u32,
 }
 
+#[allow(clippy::cast_possible_truncation)]
 #[function_component(AlertComponent)]
 pub fn alert_component(props: &Props) -> Html {
     let (store, dispatch) = use_store::<Store>();
@@ -23,7 +24,7 @@ pub fn alert_component(props: &Props) -> Html {
             let cloned_dispatch = dispatch.clone();
             if *show_alert {
                 let handle =
-                    Timeout::new(*delay_ms, move || set_hide_alert(cloned_dispatch)).forget();
+                    Timeout::new(*delay_ms, move || set_hide_alert(&cloned_dispatch)).forget();
                 let clear_handle = move || {
                     web_sys::Window::clear_timeout_with_handle(
                         &web_sys::window().unwrap(),

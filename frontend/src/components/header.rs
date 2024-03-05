@@ -1,4 +1,4 @@
-/// https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/components/header.rs
+/// `https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/components/header.rs`
 ///
 use crate::{
     router::Route,
@@ -26,7 +26,7 @@ pub fn header_component() -> Html {
             let dispatch2 = store_dispatch2.clone();
             let _navigator = cloned_navigator.clone();
             spawn_local(async move {
-                set_page_loading(true, dispatch.clone());
+                set_page_loading(true, &dispatch);
                 // let res = api_logout_user().await;
                 // match res {
                 //     Ok(_) => {
@@ -40,9 +40,9 @@ pub fn header_component() -> Html {
                 //         set_page_loading(false, dispatch);
                 //     }
                 // };
-                set_page_loading(false, dispatch.clone());
-                set_auth_user(None, None, dispatch2.clone());
-                set_show_alert("Logged out successfully".to_string(), dispatch);
+                set_page_loading(false, &dispatch);
+                set_auth_user(None, None, &dispatch2);
+                set_show_alert("Logged out successfully".to_string(), &dispatch);
             });
         })
     };

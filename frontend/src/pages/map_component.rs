@@ -18,7 +18,7 @@ use crate::store::Store;
 const PARIS_LAT: f64 = 48.866_667;
 const PARIS_LNG: f64 = 2.333_333;
 
-/// We MUST NOT modify both the Store and the State in MapComponent because that would trigger massive redraws!
+/// We MUST NOT modify both the Store and the State in `MapComponent` because that would trigger massive redraws!
 /// So to avoid this we add a custom struct and use `use_state_eq` with our custom `PartialEq` implementation
 #[derive(Clone)]
 struct MyCircleWrapper {
@@ -47,12 +47,12 @@ pub(crate) fn map_component() -> Html {
     //      It is important to note that you do not get notified of state changes.
     //      If you need the component to be re-rendered on state change, consider using use_state."
     let map_location_markers: Rc<RefCell<HashMap<String, MyCircleWrapper>>> =
-        use_mut_ref(|| HashMap::new());
+        use_mut_ref(HashMap::new);
 
     // "Provide a empty tuple `()` as dependencies when you need to do something only on the first render of a component."
     // let container_clone = container.clone();
     let leaflet_map_state_clone = leaflet_map_state.clone();
-    use_effect_with((), move |_| {
+    use_effect_with((), move |()| {
         // let container: Element = document().create_element("div").unwrap();
         // let container: HtmlElement = container.dyn_into().unwrap();
         // container.set_class_name("map h-full");
@@ -109,28 +109,23 @@ pub(crate) fn map_component() -> Html {
                 // else insert a new circle in the map
                 // That returns what we could call "should_insert_new_circle"
                 let mut map_location_markers_borrow = map_location_markers.borrow_mut();
-                let circle_wrapper: Option<MyCircleWrapper> = match map_location_markers_borrow
-                    .get_mut(username)
+                let circle_wrapper: Option<MyCircleWrapper> = if let Some(circle_wrapper) =
+                    map_location_markers_borrow.get_mut(username)
                 {
-                    Some(circle_wrapper) => {
-                        // update the existing circle
-                        console::log_1(
-                            &"MapComponent: leaflet_map_state update the existing circle".into(),
-                        );
-                        circle_wrapper.circle.set_lat_lng(&LatLng::new(*lat, *lng));
-                        None
-                    }
-                    None => {
-                        // create a new circle
-                        console::log_1(
-                            &"MapComponent: leaflet_map_state create a new circle".into(),
-                        );
-                        let circle = new_circle_with_options(*lat, *lng, username);
-                        Some(MyCircleWrapper {
-                            tag: username.to_string(),
-                            circle,
-                        })
-                    }
+                    // update the existing circle
+                    console::log_1(
+                        &"MapComponent: leaflet_map_state update the existing circle".into(),
+                    );
+                    circle_wrapper.circle.set_lat_lng(&LatLng::new(*lat, *lng));
+                    None
+                } else {
+                    // create a new circle
+                    console::log_1(&"MapComponent: leaflet_map_state create a new circle".into());
+                    let circle = new_circle_with_options(*lat, *lng, username);
+                    Some(MyCircleWrapper {
+                        tag: username.to_string(),
+                        circle,
+                    })
                 };
 
                 if let Some(circle_wrapper) = &circle_wrapper {
@@ -167,16 +162,10 @@ pub(crate) fn map_component() -> Html {
     }
 }
 
-/// https://github.com/slowtec/leaflet-rs/blob/09d02e74bc30d519a5a30bb130516aa161f0415a/examples/basic/src/lib.rs#L76
+/// `https://github.com/slowtec/leaflet-rs/blob/09d02e74bc30d519a5a30bb130516aa161f0415a/examples/basic/src/lib.rs#L76`
 /// Does NOT add it to the map; you SHOULD call eg `circle.add_to(leaflet_map)` afterward
 fn new_circle_with_options(lat: f64, lng: f64, username: &str) -> Circle {
-    console::log_1(
-        &format!(
-            "MapComponent: add_circle_with_options username: {}",
-            username
-        )
-        .into(),
-    );
+    console::log_1(&format!("MapComponent: add_circle_with_options username: {username}",).into());
     let lat_lng = LatLng::new(lat, lng);
 
     let options = leaflet::CircleOptions::default();
@@ -193,7 +182,7 @@ fn new_circle_with_options(lat: f64, lng: f64, username: &str) -> Circle {
     circle
 }
 
-/// Add a .gpx (GeoJSON) track on the map
+/// Add a .gpx (`GeoJSON`) track on the map
 fn add_geojson_trace(map: &Map) {
     // Parse the GeoJSON string into a serde_json::Value
     let geojson_string: Value = serde_json::from_str(include_str!(
@@ -212,8 +201,8 @@ fn add_geojson_trace(map: &Map) {
             let arr = line.as_array().unwrap();
             let lng = arr[0].as_f64().expect("arr[0].as_f64");
             let lat = arr[1].as_f64().expect("arr[1].as_f64");
-            let lat_lng = LatLng::new(lat, lng);
-            lat_lng
+
+            LatLng::new(lat, lng)
         })
         .collect::<Array>();
     // console::log_1(&format!("MapComponent: add_geojson_trace: latlngs: {:?}", latlngs,).into());

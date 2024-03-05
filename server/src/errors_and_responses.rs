@@ -1,4 +1,4 @@
-/// https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/error-handling/src/main.rs#L129C1-L152C2
+/// `https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/error-handling/src/main.rs#L129C1-L152C2`
 use axum::extract::rejection::JsonRejection;
 use axum::extract::FromRequest;
 use axum::http::StatusCode;
@@ -19,7 +19,8 @@ where
     }
 }
 
-// The kinds of errors we can hit in our application.
+/// The kinds of errors we can hit in our application.
+#[derive(Debug)]
 pub(crate) enum AppError {
     // The request body contained invalid JSON
     JsonRejection(JsonRejection),

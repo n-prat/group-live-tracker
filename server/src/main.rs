@@ -78,7 +78,7 @@ async fn main() -> Result<(), std::io::Error> {
     tracing_subscriber::fmt::init();
 
     let db_pool = db::setup_db("sqlite://file:db.sqlite?mode=rwc").await?;
-    let app = new_app(db_pool).await?;
+    let app = new_app(db_pool)?;
 
     let sock_addr = SocketAddr::from((
         IpAddr::from_str(opt.addr.as_str()).unwrap_or(IpAddr::V6(Ipv6Addr::LOCALHOST)),
@@ -87,25 +87,32 @@ async fn main() -> Result<(), std::io::Error> {
 
     tracing::info!("listening on http://{}", sock_addr);
 
-    let tls_config = match (opt.tls_cert_path, opt.tls_key_path) {
-        (Some(tls_cert_path), Some(tls_key_path)) => {
+    let tls_config =
+        if let (Some(tls_cert_path), Some(tls_key_path)) = (opt.tls_cert_path, opt.tls_key_path) {
             // get the absolute path to the certificate and private key files
             tracing::info!(
                 "current dir: {}, tls_cert_path: {}, tls_key_path: {}",
-                std::env::current_dir().unwrap().display(),
+                std::env::current_dir()
+                    .map_err(|err| {
+                        std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            format!("current_dir failed: {err:?}",),
+                        )
+                    })?
+                    .display(),
                 tls_cert_path.display(),
                 tls_key_path.display(),
             );
             let tls_cert_path = tls_cert_path.canonicalize().map_err(|err| {
                 std::io::Error::new(
                     std::io::ErrorKind::NotFound,
-                    format!("tls_cert_path not found: {:?}", err),
+                    format!("tls_cert_path not found: {err:?}",),
                 )
             })?;
             let tls_key_path = tls_key_path.canonicalize().map_err(|err| {
                 std::io::Error::new(
                     std::io::ErrorKind::NotFound,
-                    format!("tls_key_path not found: {:?}", err),
+                    format!("tls_key_path not found: {err:?}",),
                 )
             })?;
             tracing::info!(
@@ -116,44 +123,45 @@ async fn main() -> Result<(), std::io::Error> {
             // configure certificate and private key used by https
             let config = RustlsConfig::from_pem_file(tls_cert_path, tls_key_path)
                 .await
-                .unwrap();
+                .map_err(|err| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        format!("from_pem_file failed: {err:?}",),
+                    )
+                })?;
 
             Some(config)
-        }
-        // NOTE: the clap args "tls_cert_path" and "tls_key_path" so we SHOULD get neither OR both
-        _ => {
+        } else {
             tracing::info!("will NOT use TLS");
             None
-        }
-    };
+        };
 
-    match tls_config {
-        Some(tls_config) => {
-            axum_server::bind_rustls(sock_addr, tls_config)
-                .serve(app.into_make_service_with_connect_info::<SocketAddr>())
-                .await
-        }
-        None => {
-            // https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/websockets/src/main.rs#L66C5-L76C15
-            // run it with hyper
-            let listener = tokio::net::TcpListener::bind(&sock_addr).await?;
-            tracing::debug!("listening on {}", listener.local_addr()?);
-
-            axum::serve(
-                listener,
-                app.into_make_service_with_connect_info::<SocketAddr>(),
-            )
+    if let Some(tls_config) = tls_config {
+        axum_server::bind_rustls(sock_addr, tls_config)
+            .serve(app.into_make_service_with_connect_info::<SocketAddr>())
             .await
-        }
+    } else {
+        // https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/websockets/src/main.rs#L66C5-L76C15
+        // run it with hyper
+        let listener = tokio::net::TcpListener::bind(&sock_addr).await?;
+        tracing::debug!("listening on {}", listener.local_addr()?);
+
+        axum::serve(
+            listener,
+            app.into_make_service_with_connect_info::<SocketAddr>(),
+        )
+        .await
     }
 }
 
-async fn hello(_claims: Claims) -> impl IntoResponse {
+async fn hello(claims: Claims) -> impl IntoResponse {
+    tracing::debug!("hello: {:?}", claims);
     "hello from server!"
 }
 
-/// https://github.com/tokio-rs/axum/blob/4d65ba0215b57797193ec49245d32d4dd79bb701/examples/testing/src/main.rs#L36
-pub(crate) async fn new_app(db_pool: SqlitePool) -> Result<Router, std::io::Error> {
+/// `https://github.com/tokio-rs/axum/blob/4d65ba0215b57797193ec49245d32d4dd79bb701/examples/testing/src/main.rs#L36`
+#[allow(clippy::unnecessary_wraps)]
+pub(crate) fn new_app(db_pool: SqlitePool) -> Result<Router, std::io::Error> {
     // https://github.com/tokio-rs/axum/blob/d703e6f97a0156177466b6741be0beac0c83d8c7/examples/static-file-server/src/main.rs#L44
     // `ServeDir` allows setting a fallback if an asset is not found
     // so with this `GET /assets/doesnt-exist.jpg` will return `index.html`

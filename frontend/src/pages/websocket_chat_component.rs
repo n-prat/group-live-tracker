@@ -1,5 +1,5 @@
 /// `https://chat.openai.com`
-/// See also https://github.com/jetli/yew-hooks/blob/e31debde4ce3c8c524c56303255baa833a0f0b79/crates/yew-hooks/src/hooks/use_websocket.rs#L163
+/// See also `https://github.com/jetli/yew-hooks/blob/e31debde4ce3c8c524c56303255baa833a0f0b79/crates/yew-hooks/src/hooks/use_websocket.rs#L163`
 // TODO maybe switch to tungstenite cf https://github.com/tokio-rs/axum/blob/main/examples/websockets/src/client.rs
 // b/c the whole "initial delay" sucks...
 // https://github.com/snapview/tokio-tungstenite/issues/278 related ?
@@ -23,11 +23,11 @@ pub(crate) fn websocket_chat_component() -> Html {
     let ws = {
         let history = history.clone();
         let ws_handle: UseWebSocketHandle = use_websocket_with_options(
-            format!("{}?token={}", WS_ROOT, token),
+            format!("{WS_ROOT}?token={token}",),
             UseWebSocketOptions {
                 // Receive message by callback `onmessage`.
                 onmessage: Some(Box::new(move |message| {
-                    history.push(format!("[recv]: {}", message));
+                    history.push(format!("[recv]: {message}",));
                 })),
                 manual: Some(false),
                 protocols: Some(vec!["chat".to_string()]),

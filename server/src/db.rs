@@ -9,10 +9,10 @@ use sqlx::{Row, SqlitePool};
 use crate::user::User;
 
 /// Prepare a DB connection pool AND run migrations(eg CREATE TABLE etc)
-/// see https://docs.rs/sqlx/latest/sqlx/macro.migrate.html#
+/// see `https://docs.rs/sqlx/latest/sqlx/macro.migrate.html#`
 ///
 /// params:
-/// - db_url: &str eg "sqlite://file:db.sqlite?mode=rwc"
+/// - `db_url`: &str eg "sqlite://file:db.sqlite?mode=rwc"
 pub(crate) async fn setup_db(db_url: &str) -> Result<SqlitePool, std::io::Error> {
     // Create a connection pool
     //  for MySQL/MariaDB, use MySqlPoolOptions::new()
@@ -23,10 +23,10 @@ pub(crate) async fn setup_db(db_url: &str) -> Result<SqlitePool, std::io::Error>
         // mode=rwc means "create if not exists"
         .connect(db_url)
         .map_err(|err| {
-            tracing::info!("sqlite connection error: {:?}", err,);
+            tracing::info!("sqlite connection error: {err:?}",);
             std::io::Error::new(
                 std::io::ErrorKind::Other,
-                format!("sqlite connection error: {:?}", err,),
+                format!("sqlite connection error: {err:?}",),
             )
         })
         .await?;
@@ -36,10 +36,10 @@ pub(crate) async fn setup_db(db_url: &str) -> Result<SqlitePool, std::io::Error>
         .run(&pool)
         .await
         .map_err(|err| {
-            tracing::info!("sqlx::migrate error: {:?}", err,);
+            tracing::info!("sqlx::migrate error: {err:?}",);
             std::io::Error::new(
                 std::io::ErrorKind::Other,
-                format!("sqlx::migrate error: {:?}", err,),
+                format!("sqlx::migrate error: {err:?}",),
             )
         })?;
 
@@ -47,9 +47,11 @@ pub(crate) async fn setup_db(db_url: &str) -> Result<SqlitePool, std::io::Error>
 }
 
 /// INSERT a new user, with a random "salt"
-/// https://gemini.google.com
+/// `https://gemini.google.com`
 ///
-/// returns: the password_hash; mostly for tests
+/// returns: the `password_hash`; mostly for tests
+// TODO add corresponding route
+#[allow(dead_code)]
 pub(crate) async fn insert_user(
     pool: &SqlitePool,
     username: &str,
@@ -64,24 +66,24 @@ pub(crate) async fn insert_user(
     let password_hash = argon2
         .hash_password(password.as_bytes(), &salt)
         .map_err(|err| {
-            tracing::error!("insert_user: password hash error: {:?}", err,);
+            tracing::error!("insert_user: password hash error: {err:?}",);
             std::io::Error::new(
                 std::io::ErrorKind::Other,
-                format!("insert_user: password hash error: {:?}", err,),
+                format!("insert_user: password hash error: {err:?}",),
             )
         })?
         .to_string();
 
-    let query = r#"INSERT INTO user (username, password_hash) VALUES (?, ?)"#;
+    let query = r"INSERT INTO user (username, password_hash) VALUES (?, ?)";
     sqlx::query(query)
         .bind(username)
         .bind(&password_hash)
         .execute(pool)
         .map_err(|err| {
-            tracing::error!("sqlite query error: {:?}", err,);
+            tracing::error!("sqlite query error: {err:?}",);
             std::io::Error::new(
                 std::io::ErrorKind::Other,
-                format!("sqlite query error: {:?}", err,),
+                format!("sqlite query error: {err:?}",),
             )
         })
         .await?;
@@ -104,32 +106,20 @@ pub(crate) async fn user_check_password(
     // NOTE: hash params from `parsed_hash` are used instead of what is configured in the
     // `Argon2` instance.
     let parsed_hash_from_db = PasswordHash::new(&user.password_hash).map_err(|err| {
-        tracing::error!(
-            "select_user_and_check_password: PasswordHash  error: {:?}",
-            err,
-        );
+        tracing::error!("select_user_and_check_password: PasswordHash  error: {err:?}",);
         std::io::Error::new(
             std::io::ErrorKind::Other,
-            format!(
-                "select_user_and_check_password: PasswordHash error: {:?}",
-                err,
-            ),
+            format!("select_user_and_check_password: PasswordHash error: {err:?}",),
         )
     })?;
 
     argon2
         .verify_password(password_to_check.as_bytes(), &parsed_hash_from_db)
         .map_err(|err| {
-            tracing::error!(
-                "select_user_and_check_password: password verify error: {:?}",
-                err,
-            );
+            tracing::error!("select_user_and_check_password: password verify error: {err:?}",);
             std::io::Error::new(
                 std::io::ErrorKind::Other,
-                format!(
-                    "select_user_and_check_password: password verify error: {:?}",
-                    err,
-                ),
+                format!("select_user_and_check_password: password verify error: {err:?}",),
             )
         })?;
 
@@ -142,25 +132,24 @@ pub(crate) async fn get_user_from_db(
     pool: &SqlitePool,
     username: &str,
 ) -> Result<Option<User>, std::io::Error> {
-    let query = r#"
+    let query = r"
         SELECT username, password_hash, is_super_user FROM user
         WHERE username = $1
-    "#;
+    ";
     let row = match sqlx::query(query).bind(username).fetch_one(pool).await {
         Ok(row) => row,
-        Err(err) => match err {
-            sqlx::Error::RowNotFound => {
+        Err(err) => {
+            if let sqlx::Error::RowNotFound = err {
                 // no user with that username
                 return Ok(None);
             }
-            _ => {
-                tracing::error!("sqlite query error: {:?}", err,);
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("sqlite query error: {:?}", err,),
-                ));
-            }
-        },
+
+            tracing::error!("sqlite query error: {err:?}",);
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("sqlite query error: {err:?}",),
+            ));
+        }
     };
 
     let user = User {
@@ -175,20 +164,18 @@ pub(crate) async fn get_user_from_db(
 /// simply check if a user is in the db or not
 /// reminder: we want "anynomous" users to be able to access the app
 pub(crate) async fn list_users_from_db(pool: &SqlitePool) -> Result<Vec<User>, std::io::Error> {
-    let query = r#"
+    let query = r"
         SELECT username, password_hash, is_super_user FROM user
-    "#;
+    ";
     let rows = match sqlx::query(query).fetch_all(pool).await {
         Ok(row) => row,
-        Err(err) => match err {
-            _ => {
-                tracing::error!("sqlite query error: {:?}", err,);
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("sqlite query error: {:?}", err,),
-                ));
-            }
-        },
+        Err(err) => {
+            tracing::error!("sqlite query error: {err:?}",);
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("sqlite query error: {err:?}",),
+            ));
+        }
     };
 
     let mut all_users = vec![];
@@ -210,19 +197,19 @@ pub(crate) async fn update_user_to_superuser(
     pool: &SqlitePool,
     username: &str,
 ) -> Result<(), std::io::Error> {
-    let query = r#"
+    let query = r"
         UPDATE user
         SET is_super_user = 1
         WHERE username = $1
-    "#;
+    ";
     sqlx::query(query)
         .bind(username)
         .execute(pool)
         .map_err(|err| {
-            tracing::error!("sqlite query error: {:?}", err,);
+            tracing::error!("sqlite query error: {err:?}",);
             std::io::Error::new(
                 std::io::ErrorKind::Other,
-                format!("sqlite query error: {:?}", err,),
+                format!("sqlite query error: {err:?}",),
             )
         })
         .await?;

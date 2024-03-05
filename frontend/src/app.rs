@@ -1,4 +1,4 @@
-/// https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/app.rs
+/// `https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/app.rs`
 ///
 use yew::prelude::*;
 use yew_router::prelude::*;
@@ -26,7 +26,7 @@ pub fn app() -> Html {
     let (store, _) = use_store::<Store>();
     let message = store.alert_input.alert_message.clone();
     let show_alert = store.alert_input.show_alert;
-    let is_page_loading = store.page_loading.clone();
+    let is_page_loading = store.page_loading;
 
     let alert_props = AlertProps {
         message,

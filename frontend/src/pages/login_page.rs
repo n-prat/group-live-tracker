@@ -1,4 +1,4 @@
-/// https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/pages/login_page.rs
+/// `https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/pages/login_page.rs`
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -44,7 +44,7 @@ fn get_input_callback(
             _ => todo!("missing switch cf LoginUserSchema [1]!"),
         }
         cloned_form.set(data);
-        console::debug_1(&format!("get_input_callback: cloned_form: {:?}", cloned_form).into());
+        console::debug_1(&format!("get_input_callback: cloned_form: {cloned_form:?}",).into());
     })
 }
 
@@ -52,7 +52,7 @@ fn get_input_callback(
 pub fn login_page() -> Html {
     let (store, dispatch) = use_store::<Store>();
     let (_persistent_store, dispatch2) = use_store::<PersistentStore>();
-    let form = use_state(|| LoginUserSchema::default());
+    let form = use_state(LoginUserSchema::default);
     let validation_errors = use_state(|| Rc::new(RefCell::new(ValidationErrors::new())));
     let navigator = use_navigator().unwrap();
 
@@ -62,11 +62,7 @@ pub fn login_page() -> Html {
     let validate_input_on_blur = {
         let cloned_form = form.clone();
         console::debug_1(
-            &format!(
-                "login_page: validate_input_on_blur: cloned_form: {:?}",
-                cloned_form
-            )
-            .into(),
+            &format!("login_page: validate_input_on_blur: cloned_form: {cloned_form:?}",).into(),
         );
         let cloned_validation_errors = validation_errors.clone();
         Callback::from(move |(name, value): (String, String)| {
@@ -80,14 +76,13 @@ pub fn login_page() -> Html {
 
             console::debug_1(
                 &format!(
-                    "login_page: validate_input_on_blur: Callback: cloned_form: {:?}",
-                    cloned_form
+                    "login_page: validate_input_on_blur: Callback: cloned_form: {cloned_form:?}",
                 )
                 .into(),
             );
 
             match cloned_form.validate() {
-                Ok(_) => {
+                Ok(()) => {
                     cloned_validation_errors
                         .borrow_mut()
                         .errors_mut()
@@ -117,7 +112,7 @@ pub fn login_page() -> Html {
     let on_submit = {
         console::debug_1(&"login_page: on_submit".into());
         let cloned_form = form.clone();
-        console::debug_1(&format!("login_page: on_submit: cloned_form: {:?}", cloned_form).into());
+        console::debug_1(&format!("login_page: on_submit: cloned_form: {cloned_form:?}",).into());
         let cloned_validation_errors = validation_errors.clone();
         let store_dispatch = dispatch.clone();
         let store_dispatch2 = dispatch2.clone();
@@ -142,9 +137,9 @@ pub fn login_page() -> Html {
             spawn_local(async move {
                 console::debug_1(&"login_page: on_submit Callback spawn_local".into());
                 match form.validate() {
-                    Ok(_) => {
+                    Ok(()) => {
                         let form_data = form.deref().clone();
-                        set_page_loading(true, dispatch.clone());
+                        set_page_loading(true, &dispatch);
 
                         let email_input = email_input_ref.cast::<HtmlInputElement>().unwrap();
                         // let password_input = password_input_ref.cast::<HtmlInputElement>().unwrap();
@@ -157,19 +152,19 @@ pub fn login_page() -> Html {
                         let res = api_login_user(&form_json).await;
                         match res {
                             Ok(res) => {
-                                set_page_loading(false, dispatch);
+                                set_page_loading(false, &dispatch);
                                 set_auth_user(
                                     Some(User {
                                         email: form_data.email,
                                     }),
                                     Some(res.access_token),
-                                    dispatch2.clone(),
+                                    &dispatch2,
                                 );
                                 navigator.push(&router::Route::HomePage);
                             }
                             Err(e) => {
-                                set_page_loading(false, dispatch.clone());
-                                set_show_alert(e.to_string(), dispatch);
+                                set_page_loading(false, &dispatch);
+                                set_show_alert(e.to_string(), &dispatch);
                             }
                         };
                     }

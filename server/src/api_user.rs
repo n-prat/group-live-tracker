@@ -1,6 +1,5 @@
-use axum::{http::StatusCode, Extension, Json};
+use axum::{Extension, Json};
 use serde::{Deserialize, Serialize};
-use sqlx::SqlitePool;
 
 use crate::{
     api_authorize_jwt::Claims,
@@ -23,8 +22,14 @@ pub(crate) async fn list_users(
     claims: Claims,
 ) -> Result<Json<ListUsers>, AppError> {
     // check the user credentials from a database
-    let db_pool = &state.read().unwrap().db_pool.clone();
-    let _user = match get_user_from_db(db_pool, &claims.sub).await {
+    let db_pool = match state.read() {
+        Ok(state) => state.db_pool.clone(),
+        Err(err) => {
+            tracing::error!("list_users: state read lock error: {:?}", err,);
+            return Err(AppError::InternalError);
+        }
+    };
+    let _user = match get_user_from_db(&db_pool, &claims.sub).await {
         Ok(Some(user)) => {
             // Handle the case when the user is found in the database
             if !user.is_super_user {
@@ -49,7 +54,7 @@ pub(crate) async fn list_users(
         }
     };
 
-    let all_users = match list_users_from_db(db_pool).await {
+    let all_users = match list_users_from_db(&db_pool).await {
         Ok(users) => users,
         Err(err) => {
             tracing::error!("list_users: db error: {:?}", err,);
@@ -74,8 +79,14 @@ pub(crate) async fn set_superuser(
     Json(payload): Json<SetSuperuserRequest>,
 ) -> Result<(), AppError> {
     // check the user credentials from a database
-    let db_pool = &state.read().unwrap().db_pool.clone();
-    let _user = match get_user_from_db(db_pool, &claims.sub).await {
+    let db_pool = match state.read() {
+        Ok(state) => state.db_pool.clone(),
+        Err(err) => {
+            tracing::error!("list_users: state read lock error: {:?}", err,);
+            return Err(AppError::InternalError);
+        }
+    };
+    let _user = match get_user_from_db(&db_pool, &claims.sub).await {
         Ok(Some(user)) => {
             // Handle the case when the user is found in the database
             if !user.is_super_user {
@@ -100,7 +111,7 @@ pub(crate) async fn set_superuser(
         }
     };
 
-    match update_user_to_superuser(db_pool, &payload.username).await {
+    match update_user_to_superuser(&db_pool, &payload.username).await {
         Ok(()) => {}
         Err(err) => {
             tracing::error!("set_superuser: db error: {:?}", err,);
@@ -118,12 +129,13 @@ pub(crate) mod tests {
     use super::*;
 
     use axum::body::Body;
-    use axum::http::Request;
     use axum::http::{self};
+    use axum::http::{Request, StatusCode};
     use axum::Router;
     use http_body_util::BodyExt;
     use serde_json::json;
     use serde_json::Value;
+    use sqlx::SqlitePool;
     use tower::util::ServiceExt;
 
     async fn init(username: Option<&str>, should_set_superuser: bool) -> (Router, SqlitePool) {
@@ -131,7 +143,7 @@ pub(crate) mod tests {
         let _ = env_logger::builder().is_test(true).try_init();
 
         let db_pool = setup_db("sqlite::memory:").await.unwrap();
-        let app = crate::new_app(db_pool.clone()).await.unwrap();
+        let app = crate::new_app(db_pool.clone()).unwrap();
 
         // INSERT a user if asked
         if let Some(username) = username {

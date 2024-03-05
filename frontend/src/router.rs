@@ -1,5 +1,5 @@
 use web_sys::console;
-/// https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/router.rs
+/// `https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/router.rs`
 ///
 use yew::prelude::*;
 use yew_router::prelude::*;
@@ -30,6 +30,7 @@ pub enum Route {
     NotFound,
 }
 
+#[allow(clippy::needless_pass_by_value)]
 pub fn switch(routes: Route) -> Html {
     match routes {
         Route::HomePage => html! {<HomePage/> },
@@ -37,7 +38,7 @@ pub fn switch(routes: Route) -> Html {
         Route::LoginPage => html! {<LoginPage/> },
         // Route::ProfilePage => html! {<ProfilePage/> },
         Route::NotFound => {
-            console::log_1(&format!("Route not found: {:?}", routes).into());
+            console::log_1(&format!("Route not found: {routes:?}",).into());
             html! { <My404Page /> }
         }
     }

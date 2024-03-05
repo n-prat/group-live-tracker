@@ -1,4 +1,4 @@
-/// https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/components/form_input.rs
+/// `https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/components/form_input.rs`
 use std::{cell::RefCell, rc::Rc};
 
 use validator::ValidationErrors;
@@ -30,9 +30,9 @@ pub fn form_input_component(props: &Props) -> Html {
         Some(error) => error,
         None => &empty_errors,
     };
-    let error_message = match error.get(0) {
+    let error_message = match error.first() {
         Some(message) => message.to_string(),
-        None => "".to_string(),
+        None => String::new(),
     };
 
     let handle_onchange = props.handle_onchange.clone();

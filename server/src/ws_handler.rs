@@ -14,6 +14,7 @@ use axum_extra::TypedHeader;
 //allows to extract the IP of connecting user
 use axum::extract::connect_info::ConnectInfo;
 //allows to split the websocket stream into separate TX and RX branches
+use axum::body::Body;
 use axum::extract::Query;
 use futures::SinkExt;
 use futures::StreamExt;
@@ -65,7 +66,14 @@ pub(crate) async fn ws_handler(
         .on_failed_upgrade(|error| {
             tracing::error!("ws_handler on_failed_upgrade: error: {error}");
         })
-        .on_upgrade(move |socket| handle_socket(socket, addr, state, token_data.claims.sub)))
+        .on_upgrade(move |socket| {
+            let fut = handle_socket(socket, addr, state.clone(), token_data.claims.sub);
+            async move {
+                if let Err(e) = fut.await {
+                    tracing::error!("Error in handle_socket: {:?}", e);
+                }
+            }
+        }))
 }
 
 async fn handle_socket(
@@ -73,20 +81,21 @@ async fn handle_socket(
     addr: SocketAddr,
     state: SharedState,
     claims_sub: String,
-) {
+) -> Result<Response, AppError> {
     tracing::debug!("handle_socket: protocol: {:?}", socket.protocol());
 
     let protocol = socket.protocol().and_then(|value| value.to_str().ok());
 
     if let Some("chat") = protocol {
         tracing::info!("handle_socket: chat");
-        handle_socket_chat(socket, addr, state, claims_sub).await;
+        Ok(handle_socket_chat(socket, addr, state, claims_sub).await?)
     } else if let Some("geolocation") = protocol {
         tracing::info!("handle_socket: geolocation");
-        handle_socket_geolocation(socket, addr, state, claims_sub).await;
+        Ok(handle_socket_geolocation(socket, addr, state, claims_sub).await?)
     } else {
         tracing::warn!("handle_socket: unsupported protocol: {:?}", protocol);
         // todo!("handle_socket: unsupported protocol")
+        Err(AppError::BadRequest)
     }
 }
 
@@ -94,11 +103,14 @@ async fn handle_socket(
 /// Actual websocket statemachine (one will be spawned per connection)
 async fn handle_socket_chat(
     socket: WebSocket,
-    _who: SocketAddr,
+    who: SocketAddr,
     state: SharedState,
     claims_sub: String,
-) {
-    tracing::debug!("handle_socket: protocol: {:?}", socket.protocol());
+) -> Result<Response, AppError> {
+    tracing::debug!(
+        "handle_socket_chat: protocol: {:?}, who: {who:?}",
+        socket.protocol()
+    );
 
     // "By splitting, we can send and receive at the same time."
     let (mut sender, mut receiver) = socket.split();
@@ -108,12 +120,26 @@ async fn handle_socket_chat(
 
     // "We subscribe *before* sending the "joined" message, so that we will also
     // display it to our client."
-    let mut rx = state.write().unwrap().chat_broadcast_sender.subscribe();
+    let mut rx = state
+        .write()
+        .map_err(|err| {
+            tracing::error!("handle_socket_chat: state write lock error: {:?}", err,);
+            AppError::InternalError
+        })?
+        .chat_broadcast_sender
+        .subscribe();
 
     // Now send the "joined" message to all subscribers.
     let msg = format!("{username} joined.");
     tracing::debug!("{msg}");
-    let _ = state.write().unwrap().chat_broadcast_sender.send(msg);
+    let _ = state
+        .write()
+        .map_err(|err| {
+            tracing::error!("handle_socket_chat: state write lock error: {:?}", err,);
+            AppError::InternalError
+        })?
+        .chat_broadcast_sender
+        .send(msg);
 
     // "Spawn the first task that will receive broadcast messages and send text
     // messages over the websocket to our client."
@@ -127,7 +153,14 @@ async fn handle_socket_chat(
     });
 
     // "Clone things we want to pass (move) to the receiving task."
-    let chat_broadcast_sender = state.write().unwrap().chat_broadcast_sender.clone();
+    let chat_broadcast_sender = state
+        .write()
+        .map_err(|err| {
+            tracing::error!("handle_socket_chat: state write lock error: {:?}", err,);
+            AppError::InternalError
+        })?
+        .chat_broadcast_sender
+        .clone();
 
     // "Spawn a task that takes messages from the websocket, prepends the user
     // name, and sends them to all broadcast subscribers."
@@ -148,17 +181,29 @@ async fn handle_socket_chat(
     // "Send "user left" message (similar to "joined" above)."
     let msg = format!("{username} left.");
     tracing::debug!("{msg}");
-    let _ = state.write().unwrap().chat_broadcast_sender.send(msg);
+    let _ = state
+        .write()
+        .map_err(|err| {
+            tracing::error!("handle_socket_chat: state write lock error: {:?}", err,);
+            AppError::InternalError
+        })?
+        .chat_broadcast_sender
+        .send(msg);
+
+    Ok(Response::new(Body::empty()))
 }
 
 ///
 async fn handle_socket_geolocation(
     socket: WebSocket,
-    _who: SocketAddr,
+    who: SocketAddr,
     state: SharedState,
     claims_sub: String,
-) {
-    tracing::debug!("handle_socket: protocol: {:?}", socket.protocol());
+) -> Result<Response, AppError> {
+    tracing::debug!(
+        "handle_socket_geolocation: protocol: {:?}, who: {who:?}",
+        socket.protocol()
+    );
 
     // "By splitting, we can send and receive at the same time."
     let (mut sender, mut receiver) = socket.split();
@@ -168,12 +213,32 @@ async fn handle_socket_geolocation(
 
     // "We subscribe *before* sending the "joined" message, so that we will also
     // display it to our client."
-    let mut rx = state.write().unwrap().location_broadcast_sender.subscribe();
+    let mut rx = state
+        .write()
+        .map_err(|err| {
+            tracing::error!(
+                "handle_socket_geolocation: state write lock error 0: {:?}",
+                err,
+            );
+            AppError::InternalError
+        })?
+        .location_broadcast_sender
+        .subscribe();
 
     // Now send the "joined" message to all subscribers.
     let msg = format!("{username} joined.");
     tracing::debug!("{msg}");
-    let _ = state.write().unwrap().location_broadcast_sender.send(msg);
+    let _ = state
+        .write()
+        .map_err(|err| {
+            tracing::error!(
+                "handle_socket_geolocation: state write lock error: {:?}",
+                err,
+            );
+            AppError::InternalError
+        })?
+        .location_broadcast_sender
+        .send(msg);
 
     // "Spawn the first task that will receive broadcast messages and send text
     // messages over the websocket to our client."
@@ -187,7 +252,17 @@ async fn handle_socket_geolocation(
     });
 
     // "Clone things we want to pass (move) to the receiving task."
-    let location_broadcast_sender = state.write().unwrap().location_broadcast_sender.clone();
+    let location_broadcast_sender = state
+        .write()
+        .map_err(|err| {
+            tracing::error!(
+                "handle_socket_geolocation: state write lock error 1: {:?}",
+                err,
+            );
+            AppError::InternalError
+        })?
+        .location_broadcast_sender
+        .clone();
 
     // "Spawn a task that takes messages from the websocket, prepends the user
     // name, and sends them to all broadcast subscribers."
@@ -208,7 +283,19 @@ async fn handle_socket_geolocation(
     // "Send "user left" message (similar to "joined" above)."
     let msg = format!("{username} left.");
     tracing::debug!("{msg}");
-    let _ = state.write().unwrap().location_broadcast_sender.send(msg);
+    let _ = state
+        .write()
+        .map_err(|err| {
+            tracing::error!(
+                "handle_socket_geolocation: state write lock error 2: {:?}",
+                err,
+            );
+            AppError::InternalError
+        })?
+        .location_broadcast_sender
+        .send(msg);
+
+    Ok(Response::new(Body::empty()))
 }
 
 // /// helper to print contents of messages to stdout. Has special treatment for Close.
@@ -271,7 +358,6 @@ mod tests {
             axum::serve(
                 listener,
                 new_app(db_pool)
-                    .await
                     .unwrap()
                     .into_make_service_with_connect_info::<SocketAddr>(),
             )

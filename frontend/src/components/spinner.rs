@@ -1,4 +1,4 @@
-/// https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/components/spinner.rs
+/// `https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/components/spinner.rs`
 ///
 use yew::prelude::*;
 
@@ -37,7 +37,7 @@ pub fn spinner_component(props: &Props) -> Html {
         "mr-2 {} animate-spin dark:text-gray-600 {} h-5",
         color, bg_color
       )}
-      style={format!("height:{};width:{}", width, height)}
+      style={format!("height:{height};width:{width}",)}
       viewBox="0 0 100 101"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"

@@ -16,7 +16,14 @@ pub(crate) async fn handle_gpx_upload(
     mut multipart: Multipart,
 ) -> Result<(), AppError> {
     // check the user credentials from a database
-    let db_pool = &state.read().unwrap().db_pool.clone();
+    let db_pool = &state
+        .read()
+        .map_err(|err| {
+            tracing::error!("handle_gpx_upload: state read lock error: {:?}", err,);
+            AppError::InternalError
+        })?
+        .db_pool
+        .clone();
     match get_user_from_db(db_pool, &claims.sub).await {
         Ok(Some(user)) => {
             // Handle the case when the user is found in the database
@@ -40,7 +47,11 @@ pub(crate) async fn handle_gpx_upload(
         }
     }
 
-    while let Some(field) = multipart.next_field().await.unwrap() {
+    #[allow(clippy::never_loop)]
+    while let Some(field) = multipart.next_field().await.map_err(|err| {
+        tracing::error!("handle_gpx_upload: next_field error: {:?}", err,);
+        AppError::InternalError
+    })? {
         // let field = field.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
         // TODO? check field.name() == "file" ?
 
@@ -53,10 +64,14 @@ pub(crate) async fn handle_gpx_upload(
         //         .await
         //         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
         // }
-        let _name = field.name().unwrap().to_string();
-        let _file_name = field.file_name().unwrap().to_string();
-        let _content_type = field.content_type().unwrap().to_string();
-        let data = field.bytes().await.unwrap();
+
+        // let _name = field.name().unwrap().to_string();
+        // let _file_name = field.file_name().unwrap().to_string();
+        // let _content_type = field.content_type().unwrap().to_string();
+        let data = field.bytes().await.map_err(|err| {
+            tracing::error!("handle_gpx_upload: bytes error: {:?}", err,);
+            AppError::InternalError
+        })?;
         // // let reader = BufReader::from(data);
         let mut reader = std::io::Cursor::new(data.as_ref());
 
@@ -89,9 +104,18 @@ pub(crate) async fn handle_gpx_upload(
 
         // cf https://github.com/georust/geozero/blob/52a4d2d3c11f02e734274fcb6ee4b88b94b5b53d/geozero/tests/gpx.rs#L91
         let mut reader = GpxReader(&mut reader);
-        let geojson_str = reader.to_json().unwrap();
+        let geojson_str = reader.to_json().map_err(|err| {
+            tracing::error!("handle_gpx_upload: to_json error: {:?}", err,);
+            AppError::InternalError
+        })?;
 
-        state.write().unwrap().geojson = Some(geojson_str);
+        state
+            .write()
+            .map_err(|err| {
+                tracing::error!("handle_gpx_upload: state write lock error: {:?}", err,);
+                AppError::InternalError
+            })?
+            .geojson = Some(geojson_str);
 
         // return Ok(Json(json!({ "status": "success" })));
         return Ok(());

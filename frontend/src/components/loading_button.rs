@@ -1,4 +1,4 @@
-/// https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/components/loading_button.rs
+/// `https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/components/loading_button.rs`
 ///
 use super::spinner::Spinner;
 use yew::prelude::*;
@@ -39,7 +39,7 @@ pub fn loading_button_component(props: &Props) -> Html {
           <span class="text-slate-500 inline-block">{"Loading..."}</span>
         </div>
       }else{
-        <span class={text_color.to_owned()}>{props.children.clone()}</span>
+        <span class={text_color.clone()}>{props.children.clone()}</span>
       }
     </button>
     }

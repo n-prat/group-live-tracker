@@ -1,4 +1,4 @@
-/// https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/api/types.r
+/// `https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/api/types.rs`
 ///
 use serde::{Deserialize, Serialize};
 
@@ -26,7 +26,7 @@ pub struct UserResponse {
     pub data: UserData,
 }
 
-/// MUST match `struct AuthBody` in server/src/auth_jwt.rs
+/// MUST match `struct AuthBody` in `server/src/auth_jwt.rs`
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UserLoginResponse {
     pub access_token: String,
