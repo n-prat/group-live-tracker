@@ -353,7 +353,7 @@ mod tests {
             .await
             .unwrap();
         let addr = listener.local_addr().unwrap();
-        let db_pool = setup_db("sqlite::memory:").await.unwrap();
+        let db_pool = setup_db("sqlite::memory:", None, None).await.unwrap();
         tokio::spawn(
             axum::serve(
                 listener,

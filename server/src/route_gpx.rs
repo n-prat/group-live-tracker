@@ -145,7 +145,7 @@ mod tests {
     #[tokio::test]
     async fn test_handle_gpx_upload_superuser_ok() {
         let f = async {
-            let db_pool = setup_db("sqlite::memory:").await.unwrap();
+            let db_pool = setup_db("sqlite::memory:", None, None).await.unwrap();
             let username = "aaa";
             insert_user(&db_pool, username, "password").await.unwrap();
             update_user_to_superuser(&db_pool, username).await.unwrap();
@@ -209,7 +209,7 @@ mod tests {
     #[tokio::test]
     async fn test_handle_gpx_upload_must_be_superuser_else_404() {
         let f = async {
-            let db_pool = setup_db("sqlite::memory:").await.unwrap();
+            let db_pool = setup_db("sqlite::memory:", None, None).await.unwrap();
             let username = "aaa";
             insert_user(&db_pool, username, "password").await.unwrap();
             let app_state = new_state(db_pool);
@@ -255,7 +255,7 @@ mod tests {
     #[tokio::test]
     async fn test_handle_gpx_upload_user_not_in_db_should_fail_404() {
         let f = async {
-            let db_pool = setup_db("sqlite::memory:").await.unwrap();
+            let db_pool = setup_db("sqlite::memory:", None, None).await.unwrap();
             let username = "aaa";
             let app_state = new_state(db_pool);
 

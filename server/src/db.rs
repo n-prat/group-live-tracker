@@ -47,23 +47,23 @@ pub(crate) async fn setup_db(
             )
         })?;
 
-    // TODO if both root_user and root_password are given: INSERT or UPDATE the user and their password
-    // if let (Some(root_user), Some(root_password)) = (root_user, root_password) {
-    //     match get_user_from_db(&pool, &root_user).await? {
-    //         Some(user) => {
-    //             // Handle the case when the user exists in the database
-    //             // nothing to do
-    //         }
-    //         None => {
-    //             insert_user(&pool, &root_user, &root_password).await?;
-    //         }
-    //     }
+    // if both root_user and root_password are given: INSERT or UPDATE the user and their password
+    if let (Some(root_user), Some(root_password)) = (root_user, root_password) {
+        match get_user_from_db(&pool, &root_user).await? {
+            Some(_user) => {
+                // Handle the case when the user exists in the database
+                // nothing to do
+            }
+            None => {
+                insert_user(&pool, &root_user, &root_password).await?;
+            }
+        }
 
-    //     update_user_to_superuser(&pool, &root_user).await?;
-    //     update_user_password(&pool, &root_user, &root_password).await?;
-    // } else {
-    //     tracing::info!("missing root_user and/or root_password; skiping superuser creation",);
-    // }
+        update_user_to_superuser(&pool, &root_user).await?;
+        update_user_password(&pool, &root_user, &root_password).await?;
+    } else {
+        tracing::info!("missing root_user and/or root_password; skiping superuser creation",);
+    }
 
     Ok(pool)
 }
@@ -278,9 +278,15 @@ pub(crate) async fn update_user_password(
 pub(crate) mod tests {
     use super::*;
 
+    async fn setup() -> SqlitePool {
+        let db_pool = setup_db("sqlite::memory:", None, None).await.unwrap();
+
+        db_pool
+    }
+
     #[sqlx::test]
     async fn test_can_not_have_two_users_with_same_username() {
-        let db_pool = setup_db("sqlite::memory:").await.unwrap();
+        let db_pool = setup().await;
 
         insert_user(&db_pool, "aaa", "bbb").await.unwrap();
 
@@ -289,7 +295,7 @@ pub(crate) mod tests {
 
     #[sqlx::test]
     async fn test_can_have_two_users_with_different_usernames() {
-        let db_pool = setup_db("sqlite::memory:").await.unwrap();
+        let db_pool = setup().await;
 
         insert_user(&db_pool, "aaa", "bbb").await.unwrap();
 
@@ -298,7 +304,7 @@ pub(crate) mod tests {
 
     #[sqlx::test]
     async fn test_user_good_password_ok() {
-        let db_pool = setup_db("sqlite::memory:").await.unwrap();
+        let db_pool = setup().await;
 
         let username = "aaa";
         let password_hash = insert_user(&db_pool, username, "bbb").await.unwrap();
@@ -313,7 +319,7 @@ pub(crate) mod tests {
 
     #[sqlx::test]
     async fn test_user_wrong_password_should_fail() {
-        let db_pool = setup_db("sqlite::memory:").await.unwrap();
+        let db_pool = setup().await;
 
         let username = "aaa";
         let password_hash = insert_user(&db_pool, username, "bbb").await.unwrap();
@@ -329,7 +335,7 @@ pub(crate) mod tests {
 
     #[sqlx::test]
     async fn test_is_user_in_db_existing_user_return_ok() {
-        let db_pool = setup_db("sqlite::memory:").await.unwrap();
+        let db_pool = setup().await;
 
         let password_hash = insert_user(&db_pool, "aaa", "bbb").await.unwrap();
 
@@ -349,7 +355,7 @@ pub(crate) mod tests {
 
     #[sqlx::test]
     async fn test_is_user_in_db_non_existent_user_does_not_err() {
-        let db_pool = setup_db("sqlite::memory:").await.unwrap();
+        let db_pool = setup().await;
 
         let res = get_user_from_db(&db_pool, "aaa").await;
         assert!(res.is_ok());
@@ -359,7 +365,7 @@ pub(crate) mod tests {
 
     #[sqlx::test]
     async fn test_update_user_to_superuser_ok() {
-        let db_pool = setup_db("sqlite::memory:").await.unwrap();
+        let db_pool = setup().await;
 
         let username = "aaa";
         let password_hash = insert_user(&db_pool, username, "bbb").await.unwrap();
@@ -389,7 +395,7 @@ pub(crate) mod tests {
 
     #[sqlx::test]
     async fn test_list_users_from_db_ok() {
-        let db_pool = setup_db("sqlite::memory:").await.unwrap();
+        let db_pool = setup().await;
 
         let username1 = "111";
         let password_hash1 = insert_user(&db_pool, username1, "bbb").await.unwrap();

@@ -6,7 +6,10 @@
 /*.cert
 /*.key
 **/.env
+
+# using cargo watch so MUST ignore sqlite-journal else it restarts in loop
 **/*.sqlite
+**/*.sqlite-journal
 
 # prod
 /docs

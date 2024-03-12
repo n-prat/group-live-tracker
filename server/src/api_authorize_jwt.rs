@@ -255,7 +255,7 @@ pub(crate) mod tests {
         // https://docs.rs/crate/env_logger/latest
         let _ = env_logger::builder().is_test(true).try_init();
 
-        let db_pool = setup_db("sqlite::memory:").await.unwrap();
+        let db_pool = setup_db("sqlite::memory:", None, None).await.unwrap();
         let app = crate::new_app(db_pool.clone()).unwrap();
 
         (app, db_pool)
