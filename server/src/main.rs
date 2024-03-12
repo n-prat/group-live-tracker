@@ -64,6 +64,15 @@ struct Opt {
     /// eg "../cert.pem"
     #[clap(long, requires("tls_key_path"))]
     tls_cert_path: Option<PathBuf>,
+
+    /// eg "someusername"
+    /// if given: a corresponding user is created in the database, and their superuser flag is set
+    #[clap(long)]
+    root_user: Option<String>,
+
+    /// eg "MyPasSwOrD1234"
+    #[clap(long, requires("root_user"))]
+    root_password: Option<String>,
 }
 
 #[tokio::main]
@@ -77,7 +86,12 @@ async fn main() -> Result<(), std::io::Error> {
     // enable console logging
     tracing_subscriber::fmt::init();
 
-    let db_pool = db::setup_db("sqlite://file:db.sqlite?mode=rwc").await?;
+    let db_pool = db::setup_db(
+        "sqlite://file:db.sqlite?mode=rwc",
+        opt.root_user,
+        opt.root_password,
+    )
+    .await?;
     let app = new_app(db_pool)?;
 
     let sock_addr = SocketAddr::from((

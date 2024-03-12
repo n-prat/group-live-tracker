@@ -1,6 +1,6 @@
 /// `https://github.com/wpcodevo/rust-yew-signup-signin/blob/62e9186ba1ede01b6d13eeeac036bbd56a131e1e/src/api/user_api.rs`
 ///
-use super::types::{ErrorResponse, UserLoginResponse};
+use super::types::{ErrorResponse, ListUsers, UserLoginResponse};
 use reqwasm::http;
 
 use crate::app::API_ROOT;
@@ -104,3 +104,29 @@ pub async fn api_login_user(credentials: &str) -> Result<UserLoginResponse, Stri
 
 //     Ok(())
 // }
+
+/// cf server/src/api_user.rs
+pub async fn api_list_users(auth_token: &str) -> Result<ListUsers, String> {
+    let response = http::Request::get(&format!("{API_ROOT}/users"))
+        .header("Content-Type", "application/json")
+        .header("Authorization", &format!("Bearer {}", auth_token))
+        .credentials(http::RequestCredentials::Include)
+        .send()
+        .await
+        .map_err(|_| "Failed to make request".to_string())?;
+
+    if response.status() != 200 {
+        let error_response = response.json::<ErrorResponse>().await;
+        return if let Ok(error_response) = error_response {
+            Err(error_response.message)
+        } else {
+            Err(format!("API error: {}", response.status()))
+        };
+    }
+
+    let res_json = response.json::<ListUsers>().await;
+    match res_json {
+        Ok(data) => Ok(data),
+        Err(_) => Err("Failed to parse response".to_string()),
+    }
+}

@@ -2,17 +2,21 @@
 ///
 use serde::{Deserialize, Serialize};
 
+/// SHOULD roughly match `server/src/user.rs`
 #[allow(non_snake_case)]
 #[derive(Debug, Serialize, Deserialize, Default, PartialEq, Clone)]
 pub struct User {
     // pub id: String,
     // pub name: String,
-    pub email: String,
+    // pub email: String,
     // pub role: String,
     // pub photo: String,
     // pub verified: bool,
     // pub createdAt: DateTime<Utc>,
     // pub updatedAt: DateTime<Utc>,
+    pub(crate) username: String,
+    // pub(crate) password_hash: String,
+    pub(crate) is_super_user: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -37,4 +41,10 @@ pub struct UserLoginResponse {
 pub struct ErrorResponse {
     pub status: String,
     pub message: String,
+}
+
+/// SHOULD roughly match `server/src/api_user.rs`
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct ListUsers {
+    pub(crate) users: Vec<User>,
 }

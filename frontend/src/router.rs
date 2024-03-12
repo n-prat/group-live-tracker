@@ -11,6 +11,7 @@ use crate::pages::{
     // profile_page::ProfilePage,
     // TODO
     // register_page::RegisterPage,
+    users_component::UsersComponent,
 };
 
 #[derive(Clone, Routable, PartialEq, Debug)]
@@ -28,6 +29,8 @@ pub enum Route {
     #[not_found]
     #[at("/404")]
     NotFound,
+    #[at("/users")]
+    UsersComponent,
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -41,6 +44,7 @@ pub fn switch(routes: Route) -> Html {
             console::log_1(&format!("Route not found: {routes:?}",).into());
             html! { <My404Page /> }
         }
+        Route::UsersComponent => html! {<UsersComponent/> },
     }
 }
 

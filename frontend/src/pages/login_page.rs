@@ -29,7 +29,7 @@ struct LoginUserSchema {
     //     length(min = 1, message = "Password is required"),
     //     length(min = 6, message = "Password must be at least 6 characters")
     // )]
-    // password: String,
+    password: String,
 }
 
 fn get_input_callback(
@@ -40,7 +40,7 @@ fn get_input_callback(
         let mut data = cloned_form.deref().clone();
         match name {
             "email" => data.email = value,
-            // "password" => data.password = value,
+            "password" => data.password = value,
             _ => todo!("missing switch cf LoginUserSchema [1]!"),
         }
         cloned_form.set(data);
@@ -57,7 +57,7 @@ pub fn login_page() -> Html {
     let navigator = use_navigator().unwrap();
 
     let email_input_ref = NodeRef::default();
-    // let password_input_ref = NodeRef::default();
+    let password_input_ref = NodeRef::default();
 
     let validate_input_on_blur = {
         let cloned_form = form.clone();
@@ -69,7 +69,7 @@ pub fn login_page() -> Html {
             let mut data = cloned_form.deref().clone();
             match name.as_str() {
                 "email" => data.email = value,
-                // "password" => data.password = value,
+                "password" => data.password = value,
                 _ => todo!("missing switch cf LoginUserSchema [2]!"),
             }
             cloned_form.set(data);
@@ -107,7 +107,7 @@ pub fn login_page() -> Html {
     };
 
     let handle_email_input = get_input_callback("email", form.clone());
-    // let handle_password_input = get_input_callback("password", form.clone());
+    let handle_password_input = get_input_callback("password", form.clone());
 
     let on_submit = {
         console::debug_1(&"login_page: on_submit".into());
@@ -119,7 +119,7 @@ pub fn login_page() -> Html {
         let cloned_navigator = navigator.clone();
 
         let cloned_email_input_ref = email_input_ref.clone();
-        // let cloned_password_input_ref = password_input_ref.clone();
+        let cloned_password_input_ref = password_input_ref.clone();
 
         Callback::from(move |event: SubmitEvent| {
             console::debug_1(&"login_page: on_submit Callback".into());
@@ -132,7 +132,7 @@ pub fn login_page() -> Html {
             let navigator = cloned_navigator.clone();
 
             let email_input_ref = cloned_email_input_ref.clone();
-            // let password_input_ref = cloned_password_input_ref.clone();
+            let password_input_ref = cloned_password_input_ref.clone();
 
             spawn_local(async move {
                 console::debug_1(&"login_page: on_submit Callback spawn_local".into());
@@ -142,10 +142,10 @@ pub fn login_page() -> Html {
                         set_page_loading(true, &dispatch);
 
                         let email_input = email_input_ref.cast::<HtmlInputElement>().unwrap();
-                        // let password_input = password_input_ref.cast::<HtmlInputElement>().unwrap();
+                        let password_input = password_input_ref.cast::<HtmlInputElement>().unwrap();
 
                         email_input.set_value("");
-                        // password_input.set_value("");
+                        password_input.set_value("");
 
                         let form_json = serde_json::to_string(&form_data).unwrap();
                         console::debug_1(&"login_page: on_submit Callback form_json".into());
@@ -155,7 +155,8 @@ pub fn login_page() -> Html {
                                 set_page_loading(false, &dispatch);
                                 set_auth_user(
                                     Some(User {
-                                        email: form_data.email,
+                                        username: form_data.email,
+                                        is_super_user: false,
                                     }),
                                     Some(res.access_token),
                                     &dispatch2,
@@ -191,7 +192,7 @@ pub fn login_page() -> Html {
             class="max-w-md w-full mx-auto overflow-hidden shadow-lg bg-ct-dark-200 rounded-2xl p-8 space-y-5"
           >
             <FormInput label="Email" name="email" input_type="text" input_ref={email_input_ref} handle_onchange={handle_email_input} errors={&*validation_errors} handle_on_input_blur={validate_input_on_blur.clone()} />
-            // <FormInput label="Password" name="password" input_type="password" input_ref={password_input_ref} handle_onchange={handle_password_input} errors={&*validation_errors} handle_on_input_blur={validate_input_on_blur.clone()}/>
+            <FormInput label="Password" name="password" input_type="password" input_ref={password_input_ref} handle_onchange={handle_password_input} errors={&*validation_errors} handle_on_input_blur={validate_input_on_blur.clone()}/>
 
             <div class="text-right">
               <a href="#">

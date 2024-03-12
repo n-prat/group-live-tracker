@@ -13,7 +13,11 @@ use crate::user::User;
 ///
 /// params:
 /// - `db_url`: &str eg "sqlite://file:db.sqlite?mode=rwc"
-pub(crate) async fn setup_db(db_url: &str) -> Result<SqlitePool, std::io::Error> {
+pub(crate) async fn setup_db(
+    db_url: &str,
+    root_user: Option<String>,
+    root_password: Option<String>,
+) -> Result<SqlitePool, std::io::Error> {
     // Create a connection pool
     //  for MySQL/MariaDB, use MySqlPoolOptions::new()
     //  for SQLite, use SqlitePoolOptions::new()
@@ -43,6 +47,24 @@ pub(crate) async fn setup_db(db_url: &str) -> Result<SqlitePool, std::io::Error>
             )
         })?;
 
+    // TODO if both root_user and root_password are given: INSERT or UPDATE the user and their password
+    // if let (Some(root_user), Some(root_password)) = (root_user, root_password) {
+    //     match get_user_from_db(&pool, &root_user).await? {
+    //         Some(user) => {
+    //             // Handle the case when the user exists in the database
+    //             // nothing to do
+    //         }
+    //         None => {
+    //             insert_user(&pool, &root_user, &root_password).await?;
+    //         }
+    //     }
+
+    //     update_user_to_superuser(&pool, &root_user).await?;
+    //     update_user_password(&pool, &root_user, &root_password).await?;
+    // } else {
+    //     tracing::info!("missing root_user and/or root_password; skiping superuser creation",);
+    // }
+
     Ok(pool)
 }
 
@@ -57,6 +79,26 @@ pub(crate) async fn insert_user(
     username: &str,
     password: &str,
 ) -> Result<String, std::io::Error> {
+    let password_hash = generate_new_password_hash(password)?;
+
+    let query = r"INSERT INTO user (username, password_hash) VALUES (?, ?)";
+    sqlx::query(query)
+        .bind(username)
+        .bind(&password_hash)
+        .execute(pool)
+        .map_err(|err| {
+            tracing::error!("sqlite query error: {err:?}",);
+            std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("sqlite query error: {err:?}",),
+            )
+        })
+        .await?;
+
+    Ok(password_hash)
+}
+
+fn generate_new_password_hash(password: &str) -> Result<String, std::io::Error> {
     let salt = SaltString::generate(&mut OsRng);
 
     // Argon2 with default params (Argon2id v19)
@@ -73,20 +115,6 @@ pub(crate) async fn insert_user(
             )
         })?
         .to_string();
-
-    let query = r"INSERT INTO user (username, password_hash) VALUES (?, ?)";
-    sqlx::query(query)
-        .bind(username)
-        .bind(&password_hash)
-        .execute(pool)
-        .map_err(|err| {
-            tracing::error!("sqlite query error: {err:?}",);
-            std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("sqlite query error: {err:?}",),
-            )
-        })
-        .await?;
 
     Ok(password_hash)
 }
@@ -204,6 +232,35 @@ pub(crate) async fn update_user_to_superuser(
     ";
     sqlx::query(query)
         .bind(username)
+        .execute(pool)
+        .map_err(|err| {
+            tracing::error!("sqlite query error: {err:?}",);
+            std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("sqlite query error: {err:?}",),
+            )
+        })
+        .await?;
+
+    Ok(())
+}
+
+/// UPDATE a given user password
+pub(crate) async fn update_user_password(
+    pool: &SqlitePool,
+    username: &str,
+    password: &str,
+) -> Result<(), std::io::Error> {
+    let password_hash = generate_new_password_hash(password)?;
+
+    let query = r"
+        UPDATE user
+        SET password_hash = $2
+        WHERE username = $1
+    ";
+    sqlx::query(query)
+        .bind(username)
+        .bind(password_hash)
         .execute(pool)
         .map_err(|err| {
             tracing::error!("sqlite query error: {err:?}",);
