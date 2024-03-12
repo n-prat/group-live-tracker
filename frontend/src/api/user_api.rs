@@ -105,11 +105,11 @@ pub async fn api_login_user(credentials: &str) -> Result<UserLoginResponse, Stri
 //     Ok(())
 // }
 
-/// cf server/src/api_user.rs
+/// cf `server/src/api_user.rs`
 pub async fn api_list_users(auth_token: &str) -> Result<ListUsers, String> {
     let response = http::Request::get(&format!("{API_ROOT}/users"))
         .header("Content-Type", "application/json")
-        .header("Authorization", &format!("Bearer {}", auth_token))
+        .header("Authorization", &format!("Bearer {auth_token}",))
         .credentials(http::RequestCredentials::Include)
         .send()
         .await

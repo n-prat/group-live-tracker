@@ -1,21 +1,8 @@
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::rc::Rc;
-
-/// `https://github.com/slowtec/leaflet-rs/blob/master/examples/yew-component/src/components/map_component.rs`
-use gloo_utils::document;
-use js_sys::Array;
-use leaflet::{Circle, LatLng, Map, MapOptions, Polyline, PolylineOptions, TileLayer};
-use leaflet::{Tooltip, TooltipOptions};
-use serde_json::Value;
-use wasm_bindgen::{JsCast, JsValue};
-use wasm_bindgen_futures::spawn_local;
-use web_sys::{console, HtmlElement};
+use web_sys::console;
 use yew::prelude::*;
-use yew_hooks::{use_async, use_async_with_options, UseAsyncOptions};
+use yew_hooks::{use_async_with_options, UseAsyncOptions};
 use yewdux::use_store;
 
-use crate::api::types::ListUsers;
 use crate::api::user_api::api_list_users;
 use crate::store::{set_page_loading, set_show_alert, PersistentStore, Store};
 
@@ -62,7 +49,7 @@ pub(crate) fn users_component() -> Html {
                         html! { format!("Error: {}", error) }
                     }
                     else if users_response_state.loading {
-                        console::log_1(&format!("api_list_users loading...").into());
+                        console::log_1(&"api_list_users loading...".to_string().into());
                         html! { "Loading..." }
                     }
                     else {
